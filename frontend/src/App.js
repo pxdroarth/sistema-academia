@@ -17,10 +17,12 @@ function App() {
       });
   }, [alunoId]);
 
-  return (
-    <div className="App">
-      <h1>Informações do Sistema de Academia</h1>
-      {/* Passar o estado 'debitos' para o componente TelaAluno */}
+   return (
+    <div className="App p-6 bg-gray-50 min-h-screen">
+      <h1 className="text-3xl font-bold text-blue-600 mb-4">
+        Informações do Sistema de Academia
+      </h1>
+      {/* Aqui é onde você "renderiza" o componente TelaAluno */}
       <TelaAluno alunoId={alunoId} debitos={debitos} />
     </div>
   );
