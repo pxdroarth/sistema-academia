@@ -4,8 +4,10 @@ const port = 3001;
 
 // Importa o pool de conexão com o banco MySQL
 const pool = require('./database');
-
 app.use(express.json());
+
+const cors = require('cors');
+app.use(cors());
 
 // Importar rotas, passando o pool para elas, se quiser
 const alunosRouter = require('./routes/alunos');

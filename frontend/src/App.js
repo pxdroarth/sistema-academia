@@ -1,29 +1,54 @@
-import React, { useState, useEffect } from 'react';
-import TelaAluno from './TelaAluno'; // Importe o componente TelaAluno
+import React, { useEffect, useState } from 'react';
+import TelaAluno from './components/TelaAluno';
+import TelaMensalidade from './components/TelaMensalidade';
+import TelaAcesso from './components/TelaAcesso';
+
+import { fetchAlunos, fetchMensalidades, fetchAcessos } from './services/Api';
 
 function App() {
-  const [alunoId] = useState(1);  // Defina o ID do aluno para testar
-  const [debitos, setDebitos] = useState(null);
+  const alunoId = 1; // Ajuste para o aluno que deseja testar
+  const [aluno, setAluno] = useState(null);
+  const [mensalidades, setMensalidades] = useState([]);
+  const [acessos, setAcessos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Chamar a função IPC do Electron para verificar débito
-    window.electron.verificarDebito(alunoId)
-      .then((resposta) => {
-        console.log('Resposta do backend IPC:', resposta);  // Verificar a resposta
-        setDebitos(resposta);  // Atualizar o estado com a resposta
-      })
-      .catch((erro) => {
-        console.error('Erro ao verificar débito:', erro);  // Captura erro
-      });
+    async function carregarDados() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const alunosData = await fetchAlunos();
+        const alunoEncontrado = alunosData.find(a => a.id === alunoId);
+        setAluno(alunoEncontrado);
+
+        const mensalidadesData = await fetchMensalidades(alunoId);
+        setMensalidades(mensalidadesData);
+
+        const acessosData = await fetchAcessos(alunoId);
+        setAcessos(acessosData);
+
+      } catch (err) {
+        setError('Erro ao carregar dados. Tente novamente.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    carregarDados();
   }, [alunoId]);
 
-   return (
+  if (loading) return <p className="p-6">Carregando dados...</p>;
+  if (error) return <p className="p-6 text-red-600">{error}</p>;
+
+  return (
     <div className="App p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold text-blue-600 mb-4">
-        Informações do Sistema de Academia
-      </h1>
-      {/* Aqui é onde você "renderiza" o componente TelaAluno */}
-      <TelaAluno alunoId={alunoId} debitos={debitos} />
+      <h1 className="text-3xl font-bold text-blue-600 mb-4">Sistema de Academia</h1>
+      
+      <TelaAluno aluno={aluno} debitos={mensalidades.find(m => m.status !== 'paga')} />
+      <TelaMensalidade mensalidades={mensalidades} />
+      <TelaAcesso acessos={acessos} />
     </div>
   );
 }
