@@ -1,29 +1,33 @@
 import React from 'react';
 
-export default function TelaMensalidade({ mensalidades }) {
+function TelaMensalidade({ mensalidades }) {
   if (!mensalidades || mensalidades.length === 0) {
     return <p>Nenhuma mensalidade encontrada.</p>;
   }
 
   return (
-    <div className="max-w-3xl mx-auto bg-white p-6 rounded-md shadow-md mt-10">
+    <div className="bg-white shadow rounded p-4 mb-6">
       <h2 className="text-xl font-semibold mb-4">Mensalidades</h2>
-      <table className="w-full border-collapse border border-gray-300">
+      <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className="border border-gray-300 px-4 py-2">Vencimento</th>
-            <th className="border border-gray-300 px-4 py-2">Valor Cobrado</th>
-            <th className="border border-gray-300 px-4 py-2">Desconto</th>
-            <th className="border border-gray-300 px-4 py-2">Status</th>
+            <th className="border p-2 text-left">Vencimento</th>
+            <th className="border p-2 text-left">Valor Cobrado</th>
+            <th className="border p-2 text-left">Desconto</th>
+            <th className="border p-2 text-left">Status</th>
           </tr>
         </thead>
         <tbody>
-          {mensalidades.map(m => (
+          {mensalidades.map((m) => (
             <tr key={m.id}>
-              <td className="border border-gray-300 px-4 py-2">{m.vencimento}</td>
-              <td className="border border-gray-300 px-4 py-2">R$ {m.valor_cobrado.toFixed(2)}</td>
-              <td className="border border-gray-300 px-4 py-2">R$ {m.desconto_aplicado.toFixed(2)}</td>
-              <td className="border border-gray-300 px-4 py-2">{m.status}</td>
+              <td className="border p-2">{new Date(m.vencimento).toLocaleDateString()}</td>
+              <td className="border p-2">
+                R$ {parseFloat(m.valor_cobrado).toFixed(2)}
+              </td>
+              <td className="border p-2">
+                R$ {parseFloat(m.desconto_aplicado || 0).toFixed(2)}
+              </td>
+              <td className="border p-2 capitalize">{m.status.replace('_', ' ')}</td>
             </tr>
           ))}
         </tbody>
@@ -31,4 +35,5 @@ export default function TelaMensalidade({ mensalidades }) {
     </div>
   );
 }
-  
+
+export default TelaMensalidade;

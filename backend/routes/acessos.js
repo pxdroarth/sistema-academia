@@ -2,15 +2,10 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../database');
 
-// Listar todos os acessos ordenados por data_hora crescente, trazendo também o nome do aluno
+// Listar todos os acessos
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await pool.query(`
-      SELECT acesso.*, aluno.nome
-      FROM acesso
-      LEFT JOIN aluno ON acesso.aluno_id = aluno.id
-      ORDER BY acesso.data_hora ASC
-    `);
+    const [rows] = await pool.query('SELECT * FROM acesso');
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -24,6 +19,17 @@ router.get('/:id', async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM acesso WHERE id = ?', [id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Acesso não encontrado' });
     res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Buscar acessos por aluno_id (rota nova)
+router.get('/aluno/:alunoId', async (req, res) => {
+  const alunoId = parseInt(req.params.alunoId);
+  try {
+    const [rows] = await pool.query('SELECT * FROM acesso WHERE aluno_id = ?', [alunoId]);
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -47,7 +53,7 @@ router.post('/', async (req, res) => {
       aluno_id,
       data_hora,
       resultado,
-      motivo_bloqueio: motivo_bloqueio || null
+      motivo_bloqueio: motivo_bloqueio || null,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

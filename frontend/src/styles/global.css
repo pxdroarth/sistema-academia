@@ -1,0 +1,221 @@
+/* Global CSS */
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f0f4f8;
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+h1, h2, h3, h4, h5 {
+  color: #1e40af; /* azul padrão */
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+button {
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:focus {
+  outline: none;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Sidebar e Layout */
+
+.flex {
+  display: flex;
+}
+
+h1.text-xl {
+  font-size: 1.5rem;
+}
+
+aside.w-64 {
+  width: 16rem;
+  background-color: white;
+  box-shadow: 0 0 10px rgb(0 0 0 / 0.1);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+aside h1 {
+  color: #1e40af;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+aside button {
+  background-color: #2563eb;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  margin-bottom: 1rem;
+}
+
+aside button:hover {
+  background-color: #1e40af;
+}
+
+nav.flex-grow {
+  overflow-y: auto;
+}
+
+nav ul {
+  padding-left: 0;
+  list-style: none;
+}
+
+nav ul li button {
+  background-color: transparent;
+  border: none;
+  text-align: left;
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-weight: 500;
+  color: #333;
+}
+
+nav ul li button:hover {
+  background-color: #e0e7ff;
+}
+
+nav ul li button.bg-blue-200 {
+  background-color: #bfdbfe;
+  font-weight: 700;
+}
+
+/* Main content */
+
+main.flex-grow {
+  flex-grow: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  max-width: 100%;
+}
+
+.text-red-600 {
+  color: #dc2626;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+/* Info Aluno */
+
+.info-aluno {
+  font-size: 1.3rem; /* aumentado para maior destaque */
+  max-width: 600px;
+  margin: 0 auto 2rem auto;
+  padding: 1.5rem 2rem;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 6px 15px rgb(0 0 0 / 0.1);
+  text-align: center;
+}
+
+.info-aluno p {
+  margin-bottom: 0.8rem;
+  font-weight: 500;
+}
+
+.info-aluno p strong {
+  font-weight: 700;
+}
+
+.info-aluno .debitos-pendentes {
+  color: #d32f2f;
+  font-weight: 700;
+  margin-top: 1rem;
+}
+
+/* Tabela Mensalidades */
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto 1.5rem auto;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 6px 15px rgb(0 0 0 / 0.1);
+  overflow: hidden;
+  font-size: 1rem;
+}
+
+thead tr {
+  background-color: #1e40af;
+  color: white;
+  font-weight: 700;
+}
+
+th, td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+tbody tr:hover {
+  background-color: #f3f4f6;
+}
+
+/* Textos para quando não há dados */
+
+.no-data-text {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  margin-top: 1rem;
+}
+
+/* Animações */
+
+@keyframes fadeIn {
+  from {opacity: 0;}
+  to {opacity: 1;}
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* Responsividade */
+
+@media (max-width: 768px) {
+  aside.w-64 {
+    width: 100%;
+    box-shadow: none;
+    padding: 0.5rem;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  nav.flex-grow {
+    overflow-y: visible;
+  }
+
+  main.flex-grow {
+    padding: 1rem;
+  }
+
+  .info-aluno {
+    font-size: 1.1rem;
+    max-width: 100%;
+    padding: 1rem;
+  }
+
+  table {
+    max-width: 100%;
+    font-size: 0.9rem;
+  }
+}

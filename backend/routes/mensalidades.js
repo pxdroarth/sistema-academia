@@ -12,13 +12,24 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Buscar mensalidade por ID
+// Buscar mensalidade por ID (id da mensalidade)
 router.get('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   try {
     const [rows] = await pool.query('SELECT * FROM mensalidade WHERE id = ?', [id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Mensalidade não encontrada' });
     res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Buscar mensalidades por aluno_id (nova rota)
+router.get('/aluno/:alunoId', async (req, res) => {
+  const alunoId = parseInt(req.params.alunoId);
+  try {
+    const [rows] = await pool.query('SELECT * FROM mensalidade WHERE aluno_id = ?', [alunoId]);
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
