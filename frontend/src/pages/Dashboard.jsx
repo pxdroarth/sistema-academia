@@ -1,6 +1,6 @@
 // src/pages/Dashboard.jsx
 import React, { useEffect, useState } from "react";
-import { fetchAlunos, fetchAcessos } from "../../services/Api";
+import { fetchAlunos, fetchAcessos } from "../services/Api";
 
 export default function Dashboard() {
   const [alunos, setAlunos] = useState([]);
@@ -37,7 +37,7 @@ export default function Dashboard() {
   const ultimosAcessos = acessos.slice(-20).reverse(); // Mostra os últimos 20
 
   return (
-    <div className="max-w-5xl mx-auto p-6 bg-white rounded shadow space-y-8">
+    <div className="pt-16 max-w-5xl mx-auto p-6 bg-white rounded shadow space-y-8">
       <h2 className="text-2xl font-bold text-blue-700">Dashboard Geral</h2>
 
       {erro && <p className="text-red-600">{erro}</p>}
@@ -89,4 +89,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-} 
+}

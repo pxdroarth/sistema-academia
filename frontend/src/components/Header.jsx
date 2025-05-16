@@ -4,7 +4,7 @@ export default function Header() {
   return (
     <header className="fixed top-0 left-64 right-0 h-16 bg-blue-800 text-white flex items-center justify-between px-6 shadow-md z-50">
       <div>
-        <h2 className="text-lg font-semibold">SCA - Gestão Fitness</h2>
+        <h2 className="text-lg font-semibold">SA - Gestão Academia</h2>
       </div>
       <div className="flex items-center space-x-4">
         <button

@@ -30,7 +30,7 @@ export default function AlunosPage() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-blue-700">Alunos</h2>
         <button
-          onClick={() => navigate("/aluno/novo")}
+          onClick={() => navigate("/alunos/novo")}
           className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
         >
           + Novo Aluno
@@ -54,7 +54,7 @@ export default function AlunosPage() {
           {alunosFiltrados.map((a) => (
             <li
               key={a.id}
-              onClick={() => navigate(`/aluno/${a.id}`)}
+              onClick={() => navigate(`/alunos/${a.id}`)}
               className="p-4 bg-gray-50 border rounded cursor-pointer hover:bg-gray-100 transition flex justify-between items-center"
             >
               <span className="font-medium">{a.nome}</span>
