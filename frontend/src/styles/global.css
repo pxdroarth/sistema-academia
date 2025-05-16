@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Reset básico e corpo */
 html, body, #root {
   height: 100%;

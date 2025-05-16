@@ -3,7 +3,14 @@ const API_BASE_URL = 'http://localhost:3001'; // Ajuste para a URL do seu backen
 // Alunos
 export async function fetchAlunos() {
   const response = await fetch(`${API_BASE_URL}/alunos`);
-  if (!response.ok) throw new Error('Erro ao buscar alunos');
+  if (!response.ok) {
+    throw new Error("Erro ao buscar alunos");
+  }
+  return await response.json();
+}
+export async function fetchAlunoById(id) {
+  const response = await fetch(`${API_BASE_URL}/alunos/${id}`);
+  if (!response.ok) throw new Error('Erro ao buscar aluno');
   return await response.json();
 }
 
