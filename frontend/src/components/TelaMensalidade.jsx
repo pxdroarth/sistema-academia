@@ -1,33 +1,35 @@
-import React from 'react';
+import React from "react";
 
-function TelaMensalidade({ mensalidades }) {
+export default function TelaMensalidade({ mensalidades }) {
   if (!mensalidades || mensalidades.length === 0) {
-    return <p>Nenhuma mensalidade encontrada.</p>;
+    return <p className="text-center mt-6">Nenhuma mensalidade encontrada.</p>;
   }
 
+  // Função para converter valor para número seguro
+  const formatValor = (valor) => {
+    const num = Number(valor);
+    return isNaN(num) ? "0.00" : num.toFixed(2);
+  };
+
   return (
-    <div className="bg-white shadow rounded p-4 mb-6">
-      <h2 className="text-xl font-semibold mb-4">Mensalidades</h2>
-      <table className="w-full border-collapse">
-        <thead>
+    <div className="max-w-4xl mx-auto mt-6 bg-white rounded shadow overflow-x-auto">
+      <h3 className="text-lg font-semibold p-4 border-b">Mensalidades</h3>
+      <table className="min-w-full text-left">
+        <thead className="bg-blue-600 text-white">
           <tr>
-            <th className="border p-2 text-left">Vencimento</th>
-            <th className="border p-2 text-left">Valor Cobrado</th>
-            <th className="border p-2 text-left">Desconto</th>
-            <th className="border p-2 text-left">Status</th>
+            <th className="p-3">Vencimento</th>
+            <th className="p-3">Valor Cobrado</th>
+            <th className="p-3">Desconto</th>
+            <th className="p-3">Status</th>
           </tr>
         </thead>
         <tbody>
-          {mensalidades.map((m) => (
-            <tr key={m.id}>
-              <td className="border p-2">{new Date(m.vencimento).toLocaleDateString()}</td>
-              <td className="border p-2">
-                R$ {parseFloat(m.valor_cobrado).toFixed(2)}
-              </td>
-              <td className="border p-2">
-                R$ {parseFloat(m.desconto_aplicado || 0).toFixed(2)}
-              </td>
-              <td className="border p-2 capitalize">{m.status.replace('_', ' ')}</td>
+          {mensalidades.map(({ id, vencimento, valor_cobrado, desconto_aplicado, status }) => (
+            <tr key={id} className="border-b hover:bg-gray-50">
+              <td className="p-3">{new Date(vencimento).toLocaleDateString("pt-BR")}</td>
+              <td className="p-3">R$ {formatValor(valor_cobrado)}</td>
+              <td className="p-3">R$ {formatValor(desconto_aplicado)}</td>
+              <td className="p-3 capitalize">{status}</td>
             </tr>
           ))}
         </tbody>
@@ -35,5 +37,3 @@ function TelaMensalidade({ mensalidades }) {
     </div>
   );
 }
-
-export default TelaMensalidade;

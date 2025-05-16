@@ -1,134 +1,136 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
-export default function FormAluno({ aluno, onSalvar, onCancelar }) {
-  const [nome, setNome] = useState('');
-  const [cpf, setCpf] = useState('');
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('ativo');
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState('');
+export default function FormAluno({ aluno, planos, onSalvar, onCancelar }) {
+  // Estado local para os campos do formulário
+  const [nome, setNome] = useState("");
+  const [numero, setNumero] = useState("");
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState("ativo");
+  const [planoId, setPlanoId] = useState("");
 
+  // Sempre que o "aluno" mudar, atualiza os campos do formulário
   useEffect(() => {
     if (aluno) {
-      setNome(aluno.nome || '');
-      setCpf(aluno.cpf || '');
-      setEmail(aluno.email || '');
-      setStatus(aluno.status || 'ativo');
+      setNome(aluno.nome || "");
+      setNumero(aluno.numero || "");
+      setEmail(aluno.email || "");
+      setStatus(aluno.status || "ativo");
+      setPlanoId(aluno.plano_id ? String(aluno.plano_id) : "");
     } else {
-      setNome('');
-      setCpf('');
-      setEmail('');
-      setStatus('ativo');
+      // Se não tiver aluno, limpa o formulário
+      setNome("");
+      setNumero("");
+      setEmail("");
+      setStatus("ativo");
+      setPlanoId("");
     }
-    setErro('');
   }, [aluno]);
 
-  function validarCampos() {
-    if (!nome.trim()) return 'Nome é obrigatório.';
-    if (!cpf.trim()) return 'CPF é obrigatório.';
-    if (!email.trim()) return 'Email é obrigatório.';
-    // Pode incluir validação mais complexa aqui (ex: formato de email/CPF)
-    return '';
-  }
-
-  async function handleSubmit(e) {
+  // Função para enviar os dados para o componente pai
+  function handleSubmit(e) {
     e.preventDefault();
-    const erroValidacao = validarCampos();
-    if (erroValidacao) {
-      setErro(erroValidacao);
-      return;
-    }
-
-    setSalvando(true);
-    setErro('');
-    try {
-      await onSalvar({ nome, cpf, email, status });
-    } catch {
-      setErro('Erro ao salvar aluno. Tente novamente.');
-    } finally {
-      setSalvando(false);
-    }
+    const dadosAluno = {
+      nome,
+      numero,
+      email,
+      status,
+      plano_id: Number(planoId),
+    };
+    onSalvar(dadosAluno);
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h2 className="text-xl font-semibold mb-2">{aluno ? 'Editar Aluno' : 'Novo Aluno'}</h2>
-
-      {erro && <p className="text-red-600 font-semibold">{erro}</p>}
-
       <div>
-        <label className="block font-medium mb-1" htmlFor="nome">Nome</label>
+        <label className="block font-semibold mb-1" htmlFor="nome">
+          Nome
+        </label>
         <input
-          type="text"
           id="nome"
+          type="text"
           value={nome}
           onChange={(e) => setNome(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          placeholder="Nome completo"
-          disabled={salvando}
+          className="w-full border border-gray-300 rounded px-3 py-2"
           required
+          autoFocus
         />
       </div>
 
       <div>
-        <label className="block font-medium mb-1" htmlFor="cpf">CPF</label>
+        <label className="block font-semibold mb-1" htmlFor="numero">
+          Número
+        </label>
         <input
+          id="numero"
           type="text"
-          id="cpf"
-          value={cpf}
-          onChange={(e) => setCpf(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          placeholder="CPF"
-          disabled={salvando}
-          required
+          value={numero}
+          onChange={(e) => setNumero(e.target.value)}
+          className="w-full border border-gray-300 rounded px-3 py-2"
         />
       </div>
 
       <div>
-        <label className="block font-medium mb-1" htmlFor="email">Email</label>
+        <label className="block font-semibold mb-1" htmlFor="email">
+          Email
+        </label>
         <input
-          type="email"
           id="email"
+          type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          placeholder="email@exemplo.com"
-          disabled={salvando}
+          className="w-full border border-gray-300 rounded px-3 py-2"
           required
         />
       </div>
 
       <div>
-        <label className="block font-medium mb-1" htmlFor="status">Status</label>
+        <label className="block font-semibold mb-1" htmlFor="status">
+          Status
+        </label>
         <select
           id="status"
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          disabled={salvando}
-          required
+          className="w-full border border-gray-300 rounded px-3 py-2"
         >
           <option value="ativo">Ativo</option>
           <option value="inativo">Inativo</option>
         </select>
       </div>
 
-      <div className="flex justify-end space-x-3">
-        <button
-          type="submit"
-          disabled={salvando}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-blue-300 transition"
+      <div>
+        <label className="block font-semibold mb-1" htmlFor="plano">
+          Plano
+        </label>
+        <select
+          id="plano"
+          value={planoId}
+          onChange={(e) => setPlanoId(e.target.value)}
+          className="w-full border border-gray-300 rounded px-3 py-2"
+          required
         >
-          {salvando ? 'Salvando...' : 'Salvar'}
-        </button>
+          <option value="">Selecione um plano</option>
+          {planos.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nome} - R$ {p.valor_base.toFixed(2)}
+            </option>
+          ))}
+        </select>
+      </div>
 
+      <div className="flex justify-end space-x-2">
         <button
           type="button"
           onClick={onCancelar}
-          disabled={salvando}
-          className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 transition"
+          className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-100"
         >
           Cancelar
+        </button>
+        <button
+          type="submit"
+          className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700"
+        >
+          Salvar
         </button>
       </div>
     </form>
