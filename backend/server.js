@@ -25,6 +25,12 @@ app.use('/acessos', acessosRouter);
 const mensalidadesRouter = require('./routes/mensalidades');
 app.use('/mensalidades', mensalidadesRouter);
 
+const produtosRouter = require("./routes/produtos");
+app.use("/produtos", produtosRouter);
+
+const vendasProdutosRouter = require("./routes/vendasProdutos");
+app.use("/vendas-produtos", vendasProdutosRouter);
+
 
 
 // Rota de teste de conexão com banco

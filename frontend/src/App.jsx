@@ -6,6 +6,10 @@ import AlunosPage from "./pages/alunos/AlunosPage";
 import FormAlunoPage from "./pages/alunos/FormAlunoPage";
 import PerfilPage from "./pages/alunos/PerfilPage";
 import PlanosPage from "./pages/planos/PlanosPage";
+import ProdutosPage from "./pages/produtos/ProdutosPage";
+import VendasProdutosPage from "./pages/vendasProdutos/VendasProdutosPage";
+
+
 
 function App() {
   return (
@@ -19,6 +23,9 @@ function App() {
       <Route path="/planos" element={<PlanosPage />} />
       <Route path="/alunos/novo" element={<FormAlunoPage />} />
       <Route path="/alunos/:id" element={<PerfilPage />} />
+      <Route path="/alunos/editar/:id" element={<FormAlunoPage />} />
+      <Route path="/produtos" element={<ProdutosPage />} />
+      <Route path="/vendas-produtos" element={<VendasProdutosPage />} />
 
     </Route>
   </Routes>

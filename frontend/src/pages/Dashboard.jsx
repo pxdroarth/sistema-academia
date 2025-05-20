@@ -1,11 +1,15 @@
-// src/pages/Dashboard.jsx
 import React, { useEffect, useState } from "react";
-import { fetchAlunos, fetchAcessos } from "../services/Api";
+import { fetchAlunos, fetchTodosAcessos } from "../services/Api";
+import ModalAcessosHoje from "../components/ModalAcessosHoje";
+import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
   const [alunos, setAlunos] = useState([]);
   const [acessos, setAcessos] = useState([]);
   const [erro, setErro] = useState(null);
+  const [modalAberto, setModalAberto] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     carregarDados();
@@ -16,25 +20,36 @@ export default function Dashboard() {
       const listaAlunos = await fetchAlunos();
       setAlunos(listaAlunos);
 
-      const acessosCompletos = [];
-      for (const aluno of listaAlunos) {
-        const acessosAluno = await fetchAcessos(aluno.id);
-        acessosCompletos.push(...acessosAluno.map(a => ({ ...a, nome: aluno.nome })));
-      }
+      const todosAcessos = await fetchTodosAcessos();
 
-      // Ordenar por data/hora decrescente
-      const acessosOrdenados = acessosCompletos.sort((a, b) => new Date(b.data_hora) - new Date(a.data_hora));
+      const acessosComNome = todosAcessos.map((acesso) => {
+        const aluno = listaAlunos.find((a) => a.id === acesso.aluno_id);
+        return {
+          ...acesso,
+          nome: aluno ? aluno.nome : "Aluno desconhecido",
+        };
+      });
+
+      const acessosOrdenados = acessosComNome.sort(
+        (a, b) => new Date(b.data_hora) - new Date(a.data_hora)
+      );
       setAcessos(acessosOrdenados);
     } catch (error) {
       setErro("Erro ao carregar dados do dashboard.");
+      console.error(error);
     }
   }
 
-  const totalAlunos = alunos.length;
-  const alunosAtivos = alunos.filter(a => a.status === "ativo").length;
-  const alunosInativos = alunos.filter(a => a.status !== "ativo").length;
+  // Função para navegar para a lista de alunos
+  function handleIrParaAlunos() {
+    navigate("/alunos"); // ajuste a rota conforme a sua configuração
+  }
 
-  const ultimosAcessos = acessos.slice(-20).reverse(); // Mostra os últimos 20
+  const totalAlunos = alunos.length;
+  const alunosAtivos = alunos.filter((a) => a.status === "ativo").length;
+  const alunosInativos = alunos.filter((a) => a.status !== "ativo").length;
+
+  const ultimosAcessos = acessos.slice(0, 20);
 
   return (
     <div className="pt-16 max-w-5xl mx-auto p-6 bg-white rounded shadow space-y-8">
@@ -42,19 +57,31 @@ export default function Dashboard() {
 
       {erro && <p className="text-red-600">{erro}</p>}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div className="bg-blue-100 text-blue-900 p-4 rounded shadow text-center">
-          <p className="text-sm">Total de Alunos</p>
-          <p className="text-xl font-bold">{totalAlunos}</p>
+      <div className="flex justify-between items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 flex-grow">
+          <div
+            className="bg-blue-100 text-blue-900 p-4 rounded shadow text-center cursor-pointer"
+            onClick={handleIrParaAlunos}
+          >
+            <p className="text-sm">Total de Alunos</p>
+            <p className="text-xl font-bold">{totalAlunos}</p>
+          </div>
+          <div className="bg-green-100 text-green-900 p-4 rounded shadow text-center">
+            <p className="text-sm">Alunos Ativos</p>
+            <p className="text-xl font-bold">{alunosAtivos}</p>
+          </div>
+          <div className="bg-red-100 text-red-900 p-4 rounded shadow text-center">
+            <p className="text-sm">Alunos Inativos</p>
+            <p className="text-xl font-bold">{alunosInativos}</p>
+          </div>
         </div>
-        <div className="bg-green-100 text-green-900 p-4 rounded shadow text-center">
-          <p className="text-sm">Alunos Ativos</p>
-          <p className="text-xl font-bold">{alunosAtivos}</p>
-        </div>
-        <div className="bg-red-100 text-red-900 p-4 rounded shadow text-center">
-          <p className="text-sm">Alunos Inativos</p>
-          <p className="text-xl font-bold">{alunosInativos}</p>
-        </div>
+
+        <button
+          onClick={() => setModalAberto(true)}
+          className="ml-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+        >
+          Mostrar todos acessos
+        </button>
       </div>
 
       <div className="mt-8">
@@ -69,24 +96,56 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {ultimosAcessos.length === 0 && (
+              {ultimosAcessos.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="p-3 text-center">Nenhum acesso encontrado.</td>
-                </tr>
-              )}
-              {ultimosAcessos.map(({ id, nome, data_hora, resultado }) => (
-                <tr key={id} className="border-t hover:bg-gray-50">
-                  <td className="p-3 border">{nome}</td>
-                  <td className="p-3 border">{new Date(data_hora).toLocaleString("pt-BR")}</td>
-                  <td className={`p-3 border font-semibold ${resultado === "permitido" ? "text-green-600" : "text-red-600"}`}>
-                    {resultado === "permitido" ? "Permitido" : "Negado"}
+                  <td colSpan={3} className="p-3 text-center">
+                    Nenhum acesso encontrado.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                ultimosAcessos.map(({ id, nome, data_hora, resultado }) => {
+                  const status = resultado?.toLowerCase();
+                  const isValidStatus =
+                    status === "liberado" || status === "bloqueado";
+                  const showWarning = !isValidStatus;
+
+                  return (
+                    <tr
+                      key={`${id}-${data_hora}`}
+                      className="border-t hover:bg-gray-50"
+                      title={showWarning ? `Valor inesperado: "${resultado}"` : ""}
+                    >
+                      <td className="p-3 border">{nome}</td>
+                      <td className="p-3 border">
+                        {new Date(data_hora).toLocaleString("pt-BR")}
+                      </td>
+                      <td
+                        className={`p-3 border font-semibold ${
+                          status === "liberado"
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {status === "liberado" ? "✅ Liberado" : "❌ Bloqueado"}
+                        {showWarning && (
+                          <span
+                            className="ml-2 text-yellow-500 font-normal"
+                            title="Valor inesperado"
+                          >
+                            ⚠️
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {modalAberto && <ModalAcessosHoje onClose={() => setModalAberto(false)} />}
     </div>
   );
 }

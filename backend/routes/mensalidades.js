@@ -61,7 +61,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Atualizar mensalidade por ID
+// Atualizar mensalidade por ID (completa)
 router.put('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   const { aluno_id, vencimento, valor_cobrado, desconto_aplicado, status } = req.body;
@@ -77,6 +77,31 @@ router.put('/:id', async (req, res) => {
     }
 
     res.json({ id, aluno_id, vencimento, valor_cobrado, desconto_aplicado, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// *** NOVA ROTA PATCH para atualizar só o status ***
+router.patch('/:id/status', async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { status } = req.body;
+
+  if (!status) {
+    return res.status(400).json({ error: 'Status é obrigatório' });
+  }
+
+  try {
+    const [result] = await pool.query(
+      'UPDATE mensalidade SET status = ? WHERE id = ?',
+      [status, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Mensalidade não encontrada' });
+    }
+
+    res.json({ id, status });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
