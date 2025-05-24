@@ -76,7 +76,7 @@ export default function ProdutosPage() {
                   )}
                 </td>
                 <td className="p-3 border">{produto.nome}</td>
-                <td className="p-3 border">R$ {produto.preco.toFixed(2)}</td>
+                <td className="p-3 border">R$ {produto.preco ? Number(produto.preco).toFixed(2) : '0.00'}</td>
                 <td className="p-3 border">{produto.estoque}</td>
                 <td className="p-3 border space-x-2">
                   <button

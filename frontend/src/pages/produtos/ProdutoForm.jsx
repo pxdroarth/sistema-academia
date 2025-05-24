@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { createProduto, updateProduto, fetchProdutoById } from "../../services/Api";
+import { createProduto, updateProduto } from "../../services/Api";
 
 export default function ProdutoForm({ produto, onSuccess, onCancel }) {
   const [nome, setNome] = useState("");
@@ -41,7 +41,9 @@ export default function ProdutoForm({ produto, onSuccess, onCancel }) {
     formData.append("descricao", descricao);
     formData.append("preco", preco);
     formData.append("estoque", estoque);
-    if (imagemFile) formData.append("imagem", imagemFile);
+    if (imagemFile) {
+      formData.append("imagem", imagemFile);
+    }
 
     try {
       if (produto) {

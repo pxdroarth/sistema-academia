@@ -54,7 +54,7 @@ export default function VendasProdutosPage() {
       await createVendaProduto({
         produto_id: produtoSelecionado.id,
         quantidade,
-        preco_unitario: produtoSelecionado.preco,
+        preco_unitario: Number(produtoSelecionado.preco),
       });
       setSucesso("Venda registrada com sucesso!");
       setQuantidade(1);
@@ -65,6 +65,12 @@ export default function VendasProdutosPage() {
       setErro("Erro ao registrar venda: " + e.message);
     }
   }
+
+  // Converter preço seguro para string formatada com 2 casas decimais
+  const formatPreco = (preco) => {
+    const n = Number(preco);
+    return isNaN(n) ? "0.00" : n.toFixed(2);
+  };
 
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white rounded shadow space-y-6">
@@ -110,7 +116,7 @@ export default function VendasProdutosPage() {
           <label className="block mb-1 font-semibold">Preço unitário</label>
           <input
             type="text"
-            value={produtoSelecionado ? `R$ ${produtoSelecionado.preco.toFixed(2)}` : ""}
+            value={produtoSelecionado ? `R$ ${formatPreco(produtoSelecionado.preco)}` : ""}
             readOnly
             className="w-full border px-3 py-2 rounded bg-gray-100"
           />
@@ -120,7 +126,7 @@ export default function VendasProdutosPage() {
           <label className="block mb-1 font-semibold">Total</label>
           <input
             type="text"
-            value={produtoSelecionado ? `R$ ${(produtoSelecionado.preco * quantidade).toFixed(2)}` : ""}
+            value={produtoSelecionado ? `R$ ${formatPreco(Number(produtoSelecionado.preco) * quantidade)}` : ""}
             readOnly
             className="w-full border px-3 py-2 rounded bg-gray-100"
           />
@@ -155,7 +161,7 @@ export default function VendasProdutosPage() {
                 <tr key={id} className="border-t hover:bg-gray-50">
                   <td className="p-3 border">{produto_nome}</td>
                   <td className="p-3 border">{quantidade}</td>
-                  <td className="p-3 border">R$ {preco_unitario.toFixed(2)}</td>
+                  <td className="p-3 border">R$ {formatPreco(preco_unitario)}</td>
                   <td className="p-3 border">{new Date(data_venda).toLocaleString("pt-BR")}</td>
                 </tr>
               ))

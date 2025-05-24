@@ -10,16 +10,20 @@ export default function FormAlunoPage() {
   const [cpf, setCpf] = useState("");
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("ativo");
+  const [diaVencimento, setDiaVencimento] = useState(""); // novo estado para dia vencimento
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (id) {
-      fetchAlunoById(id).then((aluno) => {
-        setNome(aluno.nome || "");
-        setCpf(aluno.cpf || "");
-        setEmail(aluno.email || "");
-        setStatus(aluno.status || "ativo");
-      }).catch(() => setError("Erro ao carregar dados do aluno."));
+      fetchAlunoById(id)
+        .then((aluno) => {
+          setNome(aluno.nome || "");
+          setCpf(aluno.cpf || "");
+          setEmail(aluno.email || "");
+          setStatus(aluno.status || "ativo");
+          setDiaVencimento(aluno.dia_vencimento ? String(aluno.dia_vencimento) : "");
+        })
+        .catch(() => setError("Erro ao carregar dados do aluno."));
     }
   }, [id]);
 
@@ -27,7 +31,14 @@ export default function FormAlunoPage() {
     e.preventDefault();
     setError(null);
 
-    const dadosAluno = { nome, cpf, email, status };
+    // Validação simples para dia vencimento
+    const diaNum = Number(diaVencimento);
+    if (!diaVencimento || isNaN(diaNum) || diaNum < 1 || diaNum > 31) {
+      setError("Informe um dia de vencimento válido (1 a 31).");
+      return;
+    }
+
+    const dadosAluno = { nome, cpf, email, status, dia_vencimento: diaNum };
 
     try {
       if (id) {
@@ -91,6 +102,20 @@ export default function FormAlunoPage() {
             <option value="ativo">Ativo</option>
             <option value="inativo">Inativo</option>
           </select>
+        </div>
+
+        <div>
+          <label className="block font-semibold mb-1">Dia de Vencimento</label>
+          <input
+            type="number"
+            min="1"
+            max="31"
+            value={diaVencimento}
+            onChange={(e) => setDiaVencimento(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2"
+            placeholder="Informe o dia do mês para vencimento"
+            required
+          />
         </div>
 
         <button

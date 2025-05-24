@@ -9,8 +9,6 @@ import PlanosPage from "./pages/planos/PlanosPage";
 import ProdutosPage from "./pages/produtos/ProdutosPage";
 import VendasProdutosPage from "./pages/vendasProdutos/VendasProdutosPage";
 
-
-
 function App() {
   return (
     <Router>

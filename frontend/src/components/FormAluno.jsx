@@ -55,6 +55,17 @@ export default function FormAluno({ aluno, planos, onSalvar, onCancelar }) {
           autoFocus
         />
       </div>
+      <div>
+        <label>Dia do Vencimento</label>
+        <input
+          type="number"
+          min="1"
+          max="31"
+          value={diaVencimento}
+          onChange={(e) => setDiaVencimento(e.target.value)}
+          placeholder="Ex: 5"
+        />
+      </div>
 
       <div>
         <label className="block font-semibold mb-1" htmlFor="numero">
