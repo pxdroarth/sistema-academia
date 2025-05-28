@@ -1,6 +1,8 @@
 const express = require('express');
 const app = express();
 const port = 3001;
+require('./cron');
+
 
 // Importa o pool de conexão com o banco MySQL
 const pool = require('./database');

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { fetchAlunoById, createAluno, updateAluno } from "../../services/Api";
+import { fetchAlunoById, createAluno, updateAluno, fetchPlanos } from "../../services/Api";
 
 export default function FormAlunoPage() {
   const { id } = useParams();
@@ -10,8 +10,23 @@ export default function FormAlunoPage() {
   const [cpf, setCpf] = useState("");
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("ativo");
-  const [diaVencimento, setDiaVencimento] = useState(""); // novo estado para dia vencimento
+  const [diaVencimento, setDiaVencimento] = useState("");
+  const [planoId, setPlanoId] = useState("");
+  const [planos, setPlanos] = useState([]); // lista de planos
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Buscar planos para popular select
+    async function carregarPlanos() {
+      try {
+        const data = await fetchPlanos();
+        setPlanos(data);
+      } catch {
+        setError("Erro ao carregar planos.");
+      }
+    }
+    carregarPlanos();
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -22,6 +37,7 @@ export default function FormAlunoPage() {
           setEmail(aluno.email || "");
           setStatus(aluno.status || "ativo");
           setDiaVencimento(aluno.dia_vencimento ? String(aluno.dia_vencimento) : "");
+          setPlanoId(aluno.plano_id ? String(aluno.plano_id) : "");
         })
         .catch(() => setError("Erro ao carregar dados do aluno."));
     }
@@ -31,14 +47,24 @@ export default function FormAlunoPage() {
     e.preventDefault();
     setError(null);
 
-    // Validação simples para dia vencimento
     const diaNum = Number(diaVencimento);
     if (!diaVencimento || isNaN(diaNum) || diaNum < 1 || diaNum > 31) {
       setError("Informe um dia de vencimento válido (1 a 31).");
       return;
     }
+    if (!planoId) {
+      setError("Selecione um plano.");
+      return;
+    }
 
-    const dadosAluno = { nome, cpf, email, status, dia_vencimento: diaNum };
+    const dadosAluno = {
+      nome,
+      cpf,
+      email,
+      status,
+      dia_vencimento: diaNum,
+      plano_id: Number(planoId),
+    };
 
     try {
       if (id) {
@@ -116,6 +142,23 @@ export default function FormAlunoPage() {
             placeholder="Informe o dia do mês para vencimento"
             required
           />
+        </div>
+
+        <div>
+          <label className="block font-semibold mb-1">Plano</label>
+          <select
+            value={planoId}
+            onChange={(e) => setPlanoId(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2"
+            required
+          >
+            <option value="">Selecione um plano</option>
+            {planos.map((plano) => (
+              <option key={plano.id} value={plano.id}>
+                {plano.nome} — R$ {Number(plano.valor_base).toFixed(2)}
+              </option>
+            ))}
+          </select>
         </div>
 
         <button

@@ -2,6 +2,32 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../database');
 
+// Função para criar mensalidade automática para o mês atual, se não existir
+async function criarMensalidadeSeNaoExistir(alunoId, planoId) {
+  const hoje = new Date();
+  const mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10);
+
+  // Verificar se já existe mensalidade para esse aluno e mês
+  const [existentes] = await pool.query(
+    'SELECT * FROM mensalidade WHERE aluno_id = ? AND vencimento = ?',
+    [alunoId, mesAtual]
+  );
+
+  if (existentes.length === 0) {
+    // Buscar valor base do plano
+    const [planos] = await pool.query('SELECT valor_base FROM plano WHERE id = ?', [planoId]);
+    if (planos.length === 0) return; // plano inválido, não criar
+
+    const valorBase = planos[0].valor_base;
+
+    // Criar mensalidade com status em_aberto
+    await pool.query(
+      'INSERT INTO mensalidade (aluno_id, vencimento, valor_cobrado, desconto_aplicado, status) VALUES (?, ?, ?, ?, ?)',
+      [alunoId, mesAtual, valorBase, 0, 'em_aberto']
+    );
+  }
+}
+
 // Listar todos os alunos
 router.get('/', async (req, res) => {
   try {
@@ -12,15 +38,14 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Criar novo aluno
+// Criar novo aluno com mensalidade automática
 router.post('/', async (req, res) => {
-  let { nome, cpf, email, status, dia_vencimento } = req.body;
+  let { nome, cpf, email, status, dia_vencimento, plano_id } = req.body;
 
-  if (!nome || !cpf || !email) {
-    return res.status(400).json({ error: 'Campos obrigatórios faltando' });
+  if (!nome || !cpf || !email || !plano_id) {
+    return res.status(400).json({ error: 'Campos obrigatórios faltando (nome, cpf, email, plano_id)' });
   }
 
-  // Define dia_vencimento para dia atual se não informado ou inválido
   if (!dia_vencimento || isNaN(dia_vencimento) || dia_vencimento < 1 || dia_vencimento > 31) {
     const hoje = new Date();
     dia_vencimento = hoje.getDate();
@@ -28,53 +53,65 @@ router.post('/', async (req, res) => {
 
   try {
     const [result] = await pool.query(
-      'INSERT INTO aluno (nome, cpf, email, status, dia_vencimento) VALUES (?, ?, ?, ?, ?)',
-      [nome, cpf, email, status || 'ativo', dia_vencimento]
+      'INSERT INTO aluno (nome, cpf, email, status, dia_vencimento, plano_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [nome, cpf, email, status || 'ativo', dia_vencimento, plano_id]
     );
+
+    const alunoId = result.insertId;
+
+    // Criar mensalidade automática se não existir
+    await criarMensalidadeSeNaoExistir(alunoId, plano_id);
+
     res.status(201).json({
-      id: result.insertId,
+      id: alunoId,
       nome,
       cpf,
       email,
       status: status || 'ativo',
       dia_vencimento,
+      plano_id
     });
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Atualizar aluno por ID
+// Atualizar aluno por ID com verificação da mensalidade automática
 router.put('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  let { nome, cpf, email, status, dia_vencimento } = req.body;
+  let { nome, cpf, email, status, dia_vencimento, plano_id } = req.body;
 
   if (!nome || !cpf || !email) {
     return res.status(400).json({ error: 'Campos obrigatórios faltando' });
   }
 
-  // Valida dia_vencimento, se enviado
   if (dia_vencimento && (isNaN(dia_vencimento) || dia_vencimento < 1 || dia_vencimento > 31)) {
     return res.status(400).json({ error: 'dia_vencimento inválido' });
   }
 
   try {
     const [result] = await pool.query(
-      'UPDATE aluno SET nome = ?, cpf = ?, email = ?, status = ?, dia_vencimento = ? WHERE id = ?',
-      [nome, cpf, email, status, dia_vencimento || null, id]
+      'UPDATE aluno SET nome = ?, cpf = ?, email = ?, status = ?, dia_vencimento = ?, plano_id = ? WHERE id = ?',
+      [nome, cpf, email, status, dia_vencimento || null, plano_id || null, id]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Aluno não encontrado para atualizar' });
     }
 
-    res.json({ id, nome, cpf, email, status, dia_vencimento });
+    // Criar mensalidade automática se não existir para o plano atualizado
+    if (plano_id) {
+      await criarMensalidadeSeNaoExistir(id, plano_id);
+    }
+
+    res.json({ id, nome, cpf, email, status, dia_vencimento, plano_id });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Buscar aluno por ID com última mensalidade
+// Buscar aluno por ID com última mensalidade e plano
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
   try {
