@@ -24,6 +24,7 @@ sistema-academia/
 ├── backend/                  # Backend com Node.js e Express
 │   ├── routes/               # Rotas da API (alunos.js, produtos.js, vendas.js, etc.)
 │   ├── database.js           # Configuração da conexão com o banco de dados
+│   ├── cron.js               # 
 │   └── server.js             # Inicialização do servidor Express
 ├── uploads/                  # Pasta de imagens dos produtos
 ├── build/                    # Pasta gerada após build do React
@@ -94,7 +95,9 @@ npm start
     "multer": "^2.0.0",
     "mysql2": "^3.14.1",
     "react": "^19.1.0",
+    "node-cron": "^4.0.7",
     "react-dom": "^19.1.0"
+    
 
 ---
 

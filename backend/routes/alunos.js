@@ -4,27 +4,43 @@ const pool = require('../database');
 
 // Função para criar mensalidade automática para o mês atual, se não existir
 async function criarMensalidadeSeNaoExistir(alunoId, planoId) {
-  const hoje = new Date();
-  const mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10);
+  try {
+    const hoje = new Date();
+    const mes = hoje.getMonth() + 1;
+    const ano = hoje.getFullYear();
 
-  // Verificar se já existe mensalidade para esse aluno e mês
-  const [existentes] = await pool.query(
-    'SELECT * FROM mensalidade WHERE aluno_id = ? AND vencimento = ?',
-    [alunoId, mesAtual]
-  );
+    // Buscar o dia_vencimento do aluno
+    const [alunoData] = await pool.query('SELECT dia_vencimento FROM aluno WHERE id = ?', [alunoId]);
+    if (alunoData.length === 0) return;
 
-  if (existentes.length === 0) {
-    // Buscar valor base do plano
-    const [planos] = await pool.query('SELECT valor_base FROM plano WHERE id = ?', [planoId]);
-    if (planos.length === 0) return; // plano inválido, não criar
+    const dia = alunoData[0].dia_vencimento || 1;
 
-    const valorBase = planos[0].valor_base;
+    // Monta a data de vencimento com o dia informado
+    const vencimentoDate = new Date(ano, mes - 1, dia);
+    const vencimento = vencimentoDate.toISOString().slice(0, 10);
 
-    // Criar mensalidade com status em_aberto
-    await pool.query(
-      'INSERT INTO mensalidade (aluno_id, vencimento, valor_cobrado, desconto_aplicado, status) VALUES (?, ?, ?, ?, ?)',
-      [alunoId, mesAtual, valorBase, 0, 'em_aberto']
+    const [existentes] = await pool.query(
+      'SELECT * FROM mensalidade WHERE aluno_id = ? AND MONTH(vencimento) = ? AND YEAR(vencimento) = ?',
+      [alunoId, mes, ano]
     );
+
+    if (existentes.length === 0) {
+      const [planos] = await pool.query('SELECT valor_base FROM plano WHERE id = ?', [planoId]);
+      if (planos.length === 0) return;
+
+      const valorBase = planos[0].valor_base;
+
+      await pool.query(
+        'INSERT INTO mensalidade (aluno_id, vencimento, valor_cobrado, desconto_aplicado, status) VALUES (?, ?, ?, ?, ?)',
+        [alunoId, vencimento, valorBase, 0, 'em_aberto']
+      );
+
+      console.log('✅ Mensalidade criada com vencimento em:', vencimento);
+    } else {
+      console.log('⏩ Mensalidade já existente');
+    }
+  } catch (err) {
+    console.error('❌ Erro ao criar mensalidade:', err);
   }
 }
 
