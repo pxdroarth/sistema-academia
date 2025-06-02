@@ -11,10 +11,10 @@ export default function ProdutoForm({ produto, onSuccess, onCancel }) {
 
   useEffect(() => {
     if (produto) {
-      setNome(produto.nome);
+      setNome(produto.nome || "");
       setDescricao(produto.descricao || "");
-      setPreco(produto.preco);
-      setEstoque(produto.estoque);
+      setPreco(produto.preco !== undefined ? produto.preco : "");
+      setEstoque(produto.estoque !== undefined ? produto.estoque : "");
       setImagemFile(null);
       setErro(null);
     } else {
@@ -31,29 +31,36 @@ export default function ProdutoForm({ produto, onSuccess, onCancel }) {
     e.preventDefault();
     setErro(null);
 
-    if (!nome || !preco || !estoque) {
+    if (!nome.trim() || preco === "" || estoque === "") {
       setErro("Preencha os campos obrigatórios.");
+      return;
+    }
+
+    // Conversão do preço para formato numérico com ponto decimal
+    let precoFormatado = preco.toString().replace(",", ".");
+    if (isNaN(Number(precoFormatado))) {
+      setErro("Preço inválido.");
       return;
     }
 
     const formData = new FormData();
     formData.append("nome", nome);
     formData.append("descricao", descricao);
-    formData.append("preco", preco);
+    formData.append("preco", precoFormatado);
     formData.append("estoque", estoque);
     if (imagemFile) {
       formData.append("imagem", imagemFile);
     }
 
     try {
-      if (produto) {
+      if (produto && produto.id) {
         await updateProduto(produto.id, formData);
       } else {
         await createProduto(formData);
       }
       onSuccess();
     } catch (err) {
-      setErro("Erro ao salvar produto: " + err.message);
+      setErro("Erro ao salvar produto: " + (err.message || "Erro desconhecido"));
     }
   }
 
@@ -69,6 +76,7 @@ export default function ProdutoForm({ produto, onSuccess, onCancel }) {
           onChange={e => setNome(e.target.value)}
           className="w-full border px-3 py-2 rounded"
           required
+          autoComplete="off"
         />
       </div>
 
@@ -83,15 +91,15 @@ export default function ProdutoForm({ produto, onSuccess, onCancel }) {
       </div>
 
       <div>
-        <label className="block font-semibold mb-1">Preço*</label>
+        <label className="block font-semibold mb-1">Preço* (ex: 10.50)</label>
         <input
-          type="number"
-          min="0"
-          step="0.01"
+          type="text"
           value={preco}
           onChange={e => setPreco(e.target.value)}
           className="w-full border px-3 py-2 rounded"
+          placeholder="0.00"
           required
+          autoComplete="off"
         />
       </div>
 
@@ -105,6 +113,7 @@ export default function ProdutoForm({ produto, onSuccess, onCancel }) {
           onChange={e => setEstoque(e.target.value)}
           className="w-full border px-3 py-2 rounded"
           required
+          autoComplete="off"
         />
       </div>
 

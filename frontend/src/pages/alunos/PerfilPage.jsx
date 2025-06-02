@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from "react";
-import PagamentoAntecipado from '../mensalidades/PagamentoAntecipado';
+import PagamentoAntecipado from "../mensalidades/PagamentoAntecipado";
+import GerarMensalidadesFuturas from "../../components/GerarMensalidadesFuturas";
+import ToastNotification from "../../components/ToastNotification";
 import { useNavigate, useParams } from "react-router-dom";
 
-
 export default function PerfilPage() {
-  const { id } = useParams(); // id do aluno vindo da rota
+  const { id } = useParams();
   const [aluno, setAluno] = useState(null);
   const [mensalidades, setMensalidades] = useState([]);
+  const [totalMensalidades, setTotalMensalidades] = useState(0);
+  const [pagina, setPagina] = useState(1);
   const [acessos, setAcessos] = useState([]);
   const [abaAtiva, setAbaAtiva] = useState("informacoes");
   const [erro, setErro] = useState(null);
+  const [toastMsg, setToastMsg] = useState(null);
+  const [emDebito, setEmDebito] = useState(false);
   const navigate = useNavigate();
 
   // Buscar dados do aluno
@@ -27,24 +32,42 @@ export default function PerfilPage() {
     fetchAluno();
   }, [id]);
 
-  // Buscar mensalidades do aluno
+  // Recarregar mensalidades e verificar débito ao mudar id ou página
   useEffect(() => {
-    async function fetchMensalidades() {
-      try {
-        const res = await fetch(
-          `http://localhost:3001/mensalidades/aluno/${id}`
-        );
-        if (!res.ok) throw new Error("Erro ao buscar mensalidades");
-        const data = await res.json();
-        setMensalidades(data);
-      } catch (err) {
-        setErro(err.message);
-      }
-    }
-    fetchMensalidades();
-  }, [id]);
+  recarregarMensalidades(pagina);
+  verificarDebito();
+}, [id, pagina]);
 
-  // Buscar acessos do aluno
+  // Função para buscar mensalidades paginadas e atualizar estado
+  async function recarregarMensalidades(paginaAtual = 1) {
+    console.log("Buscando mensalidades página:", paginaAtual);
+  try {
+    const res = await fetch(`http://localhost:3001/mensalidades/aluno/${id}?status=todos&pagina=${paginaAtual}&limite=10`);
+    if (!res.ok) throw new Error("Erro ao buscar mensalidades");
+    const data = await res.json();
+
+    setMensalidades(data.mensalidades);
+    setTotalMensalidades(data.total);
+    setPagina(paginaAtual);  // Atualiza o estado com a página usada na busca
+  } catch (err) {
+    setErro(err.message);
+  }
+}
+
+
+  // Verificar se o aluno está em débito
+  async function verificarDebito() {
+    try {
+      const res = await fetch(`http://localhost:3001/alunos/${id}/debito`);
+      if (!res.ok) throw new Error("Erro ao verificar débito");
+      const data = await res.json();
+      setEmDebito(data.em_debito);
+    } catch {
+      setEmDebito(false);
+    }
+  }
+
+  // Buscar histórico de acessos
   useEffect(() => {
     async function fetchAcessos() {
       try {
@@ -59,6 +82,42 @@ export default function PerfilPage() {
     fetchAcessos();
   }, [id]);
 
+  // Atualizar vencimento de uma mensalidade
+  async function atualizarVencimento(mensalidadeId, novoVencimento) {
+    try {
+      await fetch(
+        `http://localhost:3001/mensalidades/${mensalidadeId}/vencimento`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ novoVencimento }),
+        }
+      );
+      setToastMsg("Vencimento atualizado com sucesso!");
+      recarregarMensalidades(pagina);
+    } catch {
+      setToastMsg("Erro ao atualizar vencimento");
+    }
+  }
+
+  // Confirmar pagamento de uma mensalidade
+  async function confirmarPagamento(mensalidadeId) {
+    try {
+      const res = await fetch(
+        `http://localhost:3001/mensalidades/${mensalidadeId}/pagar`,
+        {
+          method: "PUT",
+        }
+      );
+      if (!res.ok) throw new Error("Erro ao confirmar pagamento");
+      setToastMsg("Mensalidade marcada como paga!");
+      recarregarMensalidades(pagina);
+      verificarDebito();
+    } catch {
+      setToastMsg("Erro ao confirmar pagamento");
+    }
+  }
+
   if (erro) {
     return <div className="p-4 text-red-600 font-bold">Erro: {erro}</div>;
   }
@@ -69,9 +128,18 @@ export default function PerfilPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white rounded shadow">
-      <h2 className="text-xl font-bold mb-4 text-blue-700">
+      <h2 className="text-xl font-bold mb-2 text-blue-700">
         Perfil de {aluno.nome}
       </h2>
+
+      {emDebito && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 border border-red-400 rounded">
+          <strong>Aluno em débito!</strong> Existem mensalidades vencidas e não
+          pagas.
+        </div>
+      )}
+
+      <ToastNotification message={toastMsg} onClose={() => setToastMsg(null)} />
 
       {/* Menu abas */}
       <div className="flex space-x-6 border-b mb-4">
@@ -117,65 +185,126 @@ export default function PerfilPage() {
         </button>
       </div>
 
-     {abaAtiva === "informacoes" && (
-  <div>
-    <h3 className="font-semibold mb-2">Informações do Aluno</h3>
-    <p><strong>Nome:</strong> {aluno.nome}</p>
-    <p><strong>CPF:</strong> {aluno.cpf}</p>
-    <p><strong>Email:</strong> {aluno.email}</p>
-    <p><strong>Status:</strong> {aluno.status}</p>
+      {abaAtiva === "informacoes" && (
+        <div>
+          <h3 className="font-semibold mb-2">Informações do Aluno</h3>
+          <p>
+            <strong>Nome:</strong> {aluno.nome}
+          </p>
+          <p>
+            <strong>CPF:</strong> {aluno.cpf}
+          </p>
+          <p>
+            <strong>Email:</strong> {aluno.email}
+          </p>
+          <p>
+            <strong>Status:</strong> {aluno.status}
+          </p>
 
-    <button
-      onClick={() => navigate(`/alunos/editar/${aluno.id}`)}
-      className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded"
-    >
-      Editar Aluno
-    </button>
-  </div>
-)}
+          <button
+            onClick={() => navigate(`/alunos/editar/${aluno.id}`)}
+            className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded"
+          >
+            Editar Aluno
+          </button>
+        </div>
+      )}
 
       {abaAtiva === "mensalidades" && (
         <div>
-          <h3 className="font-semibold mb-2">Mensalidades</h3>
+          <h3 className="font-semibold mb-2">
+            Mensalidades (página {pagina} de{" "}
+            {Math.max(1, Math.ceil(totalMensalidades / 10))})
+          </h3>
           {mensalidades.length === 0 ? (
             <p>Sem mensalidades registradas.</p>
           ) : (
-            <table className="min-w-full border">
-              <thead className="bg-blue-600 text-white">
-                <tr>
-                  <th className="border p-2">Vencimento</th>
-                  <th className="border p-2">Valor Cobrado</th>
-                  <th className="border p-2">Desconto</th>
-                  <th className="border p-2">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mensalidades.map((m) => (
-                  <tr key={m.id} className="border-t">
-                    <td className="p-2 border">
-                      {new Date(m.vencimento).toLocaleDateString()}
-                    </td>
-                    <td className="p-2 border">
-                      R$ {(Number(m.valor_cobrado) || 0).toFixed(2)}
-                    </td>
-                    <td className="p-2 border">
-                      R$ {(Number(m.desconto_aplicado) || 0).toFixed(2)}
-                    </td>
-                    <td
-                      className={`p-2 border font-semibold ${
-                        m.status === "pago"
-                          ? "text-green-700"
-                          : m.status === "em_aberto"
-                          ? "text-red-600"
-                          : ""
-                      }`}
-                    >
-                      {m.status.replace("_", " ")}
-                    </td>
+            <>
+              <table className="min-w-full border">
+                <thead className="bg-blue-600 text-white">
+                  <tr>
+                    <th className="border p-2">Vencimento</th>
+                    <th className="border p-2">Valor Cobrado</th>
+                    <th className="border p-2">Desconto</th>
+                    <th className="border p-2">Status</th>
+                    <th className="border p-2">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {mensalidades.map((m) => (
+                    <tr key={m.id} className="border-t">
+                      <td className="p-2 border">
+                        <input
+                          type="date"
+                          value={m.vencimento.slice(0, 10)}
+                          onChange={(e) =>
+                            atualizarVencimento(m.id, e.target.value)
+                          }
+                          disabled={m.status === "pago"}
+                          className="border rounded px-2 py-1"
+                        />
+                      </td>
+                      <td className="p-2 border">
+                        R$ {(Number(m.valor_cobrado) || 0).toFixed(2)}
+                      </td>
+                      <td className="p-2 border">
+                        R$ {(Number(m.desconto_aplicado) || 0).toFixed(2)}
+                      </td>
+                      <td
+                        className={`p-2 border font-semibold ${
+                          m.status?.trim() === "pago"
+                            ? "text-green-700"
+                            : m.status?.trim() === "em_aberto"
+                            ? "text-red-600"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {m.status && m.status.trim()
+                          ? m.status.trim().replace("_", " ")
+                          : "não informado"}
+                      </td>
+                      <td className="p-2 border">
+                        {m.status !== "pago" && (
+                          <button
+                            onClick={() => confirmarPagamento(m.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Confirmar Pagamento
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="flex justify-between mt-2">
+                  <button
+                    disabled={pagina <= 1}
+                    onClick={() => setPagina(pagina - 1)}
+                    className="bg-gray-300 px-3 py-1 rounded disabled:opacity-50"
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    disabled={pagina >= Math.ceil(totalMensalidades / 10)}
+                    onClick={() => setPagina(pagina + 1)}
+                    className="bg-gray-300 px-3 py-1 rounded disabled:opacity-50"
+                  >
+                    Próximo
+                  </button>
+              </div>
+
+              {aluno && aluno.plano_id && (
+                <div className="mt-6">
+                  <GerarMensalidadesFuturas
+                    alunoId={aluno.id}
+                    planoId={aluno.plano_id}
+                    onGerar={() => recarregarMensalidades(pagina)}
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

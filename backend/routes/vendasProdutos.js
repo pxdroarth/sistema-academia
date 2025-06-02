@@ -52,5 +52,24 @@ router.post("/", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+router.get("/", async (req, res) => {
+  const { data_inicial, data_final } = req.query;
+
+  let sql = `
+    SELECT vp.*, p.nome AS produto_nome
+    FROM venda_produto vp
+    LEFT JOIN produto p ON vp.produto_id = p.id
+    WHERE 1=1`;
+  const params = [];
+
+  if (data_inicial){ sql+=' AND vp.data_venda >= ?'; params.push(data_inicial); }
+  if (data_final)  { sql+=' AND vp.data_venda <= ?'; params.push(data_final); }
+
+  sql += ` ORDER BY vp.data_venda DESC`;
+
+  const [rows] = await pool.query(sql, params);
+  res.json(rows);
+});
+
 
 module.exports = router;

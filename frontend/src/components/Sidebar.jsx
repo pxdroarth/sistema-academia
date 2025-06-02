@@ -41,6 +41,15 @@ export default function Sidebar() {
         >
           💰 Vendas
         </NavLink>
+        <NavLink 
+          to="/financeiro" 
+          className={({ isActive }) => 
+            "block px-4 py-2 rounded font-medium " + 
+            (isActive ? "bg-blue-100 text-blue-700" : "hover:bg-gray-100")
+          }
+        >
+          📈 Financeiro
+        </NavLink>
         {/* Outros links futuros */}
       </nav>
     </aside>

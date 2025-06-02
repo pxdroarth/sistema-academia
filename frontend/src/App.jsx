@@ -9,6 +9,9 @@ import PlanosPage from "./pages/planos/PlanosPage";
 import ProdutosPage from "./pages/produtos/ProdutosPage";
 import VendasProdutosPage from "./pages/vendasProdutos/VendasProdutosPage";
 import PagamentoAntecipado from './pages/mensalidades/PagamentoAntecipado';
+import FinanceiroDashboard from "./pages/financeiro/FinanceiroDashboard";
+
+
 
 // Wrapper para passar o alunoId da URL para o componente
 function PagamentoAntecipadoWrapper() {
@@ -32,8 +35,11 @@ function App() {
           <Route path="/alunos/editar/:id" element={<FormAlunoPage />} />
           <Route path="/produtos" element={<ProdutosPage />} />
           <Route path="/vendas-produtos" element={<VendasProdutosPage />} />
+          <Route path="/financeiro" element={<FinanceiroDashboard />} />
+
           {/* Nova rota para pagamento antecipado */}
           <Route path="/mensalidades/pagamento-antecipado/:alunoId" element={<PagamentoAntecipadoWrapper />} />
+
         </Route>
       </Routes>
     </Router>

@@ -33,6 +33,12 @@ app.use("/produtos", produtosRouter);
 const vendasProdutosRouter = require("./routes/vendasProdutos");
 app.use("/vendas-produtos", vendasProdutosRouter);
 
+const financeiroRouter = require('./routes/financeiro');
+app.use('/financeiro', financeiroRouter);
+
+const relatoriosRouter = require('./routes/relatorios');
+app.use('/relatorios', relatoriosRouter);
+
 
 
 // Rota de teste de conexão com banco

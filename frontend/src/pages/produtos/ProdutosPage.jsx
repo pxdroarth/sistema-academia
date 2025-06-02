@@ -14,7 +14,7 @@ export default function ProdutosPage() {
   async function carregarProdutos() {
     try {
       const dados = await fetchProdutos();
-      setProdutos(dados);
+      setProdutos(Array.isArray(dados) ? dados : []);
     } catch (e) {
       setErro(e.message);
     }
@@ -59,7 +59,9 @@ export default function ProdutosPage() {
         <tbody>
           {produtos.length === 0 ? (
             <tr>
-              <td colSpan={5} className="p-3 text-center">Nenhum produto encontrado.</td>
+              <td colSpan={5} className="p-3 text-center">
+                Nenhum produto encontrado.
+              </td>
             </tr>
           ) : (
             produtos.map((produto) => (
@@ -72,12 +74,16 @@ export default function ProdutosPage() {
                       className="w-16 h-16 object-cover rounded"
                     />
                   ) : (
-                    <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-gray-500">Sem imagem</div>
+                    <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-gray-500">
+                      Sem imagem
+                    </div>
                   )}
                 </td>
                 <td className="p-3 border">{produto.nome}</td>
-                <td className="p-3 border">R$ {produto.preco ? Number(produto.preco).toFixed(2) : '0.00'}</td>
-                <td className="p-3 border">{produto.estoque}</td>
+                <td className="p-3 border">
+                  R$ {parseFloat(produto.preco || 0).toFixed(2)}
+                </td>
+                <td className="p-3 border">{produto.estoque ?? 0}</td>
                 <td className="p-3 border space-x-2">
                   <button
                     onClick={() => setEditProduto(produto)}

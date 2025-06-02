@@ -27,7 +27,7 @@ export default function Header() {
             alt="Usuário"
             className="w-8 h-8 rounded-full"
           />
-          <span>José</span>
+          <span>SA AGFIT</span>
         </div>
       </div>
     </header>

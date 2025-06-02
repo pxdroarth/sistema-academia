@@ -19,6 +19,7 @@ async function criarMensalidadeSeNaoExistir(alunoId, planoId) {
     const vencimentoDate = new Date(ano, mes - 1, dia);
     const vencimento = vencimentoDate.toISOString().slice(0, 10);
 
+    // Verificar se mensalidade para mês e ano já existe
     const [existentes] = await pool.query(
       'SELECT * FROM mensalidade WHERE aluno_id = ? AND MONTH(vencimento) = ? AND YEAR(vencimento) = ?',
       [alunoId, mes, ano]
@@ -87,7 +88,22 @@ router.post('/', async (req, res) => {
       dia_vencimento,
       plano_id
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
+// Verificar se aluno está em débito (mensalidades vencidas e em aberto)
+router.get('/:id/debito', async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    const [rows] = await pool.query(`
+      SELECT COUNT(*) > 0 AS em_debito
+      FROM mensalidade
+      WHERE aluno_id = ? AND status = 'em_aberto' AND vencimento < CURDATE()
+    `, [id]);
+
+    res.json({ em_debito: !!rows[0].em_debito });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -127,32 +143,32 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Buscar aluno por ID com última mensalidade e plano
+// Buscar aluno por ID com indicador se está em débito
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
   try {
+    const hoje = new Date();
+    const hojeStr = hoje.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+
     const [rows] = await pool.query(`
       SELECT a.*, 
-             COALESCE(m.valor_cobrado, 0) AS valor, 
-             COALESCE(m.vencimento, a.dia_vencimento) AS dia_vencimento_mensalidade, 
-             COALESCE(m.status, 'não pago') AS status_mensalidade,
-             COALESCE(p.nome, 'Sem plano') AS plano_nome
+        EXISTS (
+          SELECT 1 FROM mensalidade m 
+          WHERE m.aluno_id = a.id 
+            AND m.status != 'pago' 
+            AND m.vencimento < ?
+        ) AS em_debito,
+        COALESCE(p.nome, 'Sem plano') AS plano_nome
       FROM aluno a
-      LEFT JOIN mensalidade m ON a.id = m.aluno_id
       LEFT JOIN plano p ON a.plano_id = p.id
       WHERE a.id = ?
-      ORDER BY m.vencimento DESC
-      LIMIT 1
-    `, [id]);
+    `, [hojeStr, id]);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Aluno não encontrado' });
     }
 
-    const aluno = rows[0];
-    aluno.pendente = aluno.status_mensalidade !== 'pago';
-
-    res.json(aluno);
+    res.json(rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
