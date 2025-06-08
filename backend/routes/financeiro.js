@@ -1,118 +1,238 @@
-@@
- // ───────────── 1. RESUMO SIMPLES ─────────────
- router.get('/resumo', async (req, res) => {
--  const { periodo = 'mensal', usuarioId, turno } = req.query;
-+  const { periodo = 'mensal', usuarioId, turno, status } = req.query;
-@@
--      WHERE m.vencimento BETWEEN ? AND ? ${filtroUsuarioTurno}
-+      WHERE m.vencimento BETWEEN ? AND ? ${filtroUsuarioTurno}
-+        ${status && status !== 'todos' ? 'AND m.status = ?' : ''}
-     `,
--    params);
-+    status && status !== 'todos' ? [...params, status] : params);
- });
+const express = require('express');
+const router  = express.Router();
+const pool    = require('../database');
 
- // ───────────── 2. LISTA FILTRÁVEL DE MENSALIDADES ─────────────
- router.get('/mensalidades', async (req, res) => {
--  const { data_inicial, data_final, status = 'todos' } = req.query;
-+  const { data_inicial, data_final, status = 'todos' } = req.query;
+// ───────────────────────────────────────────────────────────
+// RE–USO dos controladores antigos ( continuam funcionando )
+// ───────────────────────────────────────────────────────────
+router.use('/mensalidades',    require('./mensalidades'));      // CRUD completo
+router.use('/vendas-produtos', require('./vendasProdutos'));    // CRUD completo
 
-   const filtros = [];
-   const params  = [];
+// util
+const ymd = d => d.toISOString().slice(0,10);
 
-   if (data_inicial && data_final) {
-     filtros.push('m.vencimento BETWEEN ? AND ?');
-     params.push(data_inicial, data_final);
-   }
-   if (status !== 'todos') {
-     filtros.push('m.status = ?');
-     params.push(status);
-   }
+// ───────────────────────────────────────────────────────────
+// 1)  GET /financeiro/mensalidades         (filtrada)
+// ───────────────────────────────────────────────────────────
+router.get('/mensalidades', async (req,res)=>{
+  const { data_inicial, data_final, status='todos' } = req.query;
 
-   const where = filtros.length ? 'WHERE ' + filtros.join(' AND ') : '';
-   const [rows] = await pool.query(`SELECT * FROM mensalidade m ${where}`, params);
-   res.json(rows);
- });
+  let sql = `SELECT status, valor_cobrado FROM mensalidade WHERE 1=1`;
+  const params = [];
+  if (data_inicial) { sql += ' AND vencimento >= ?'; params.push(data_inicial); }
+  if (data_final)   { sql += ' AND vencimento <= ?'; params.push(data_final); }
+  if (status !== 'todos') { sql += ' AND status = ?'; params.push(status); }
 
- // ───────────── 3. VENDAS FILTRÁVEIS ─────────────
- router.get('/vendas-produtos', async (req, res) => {
-   const { data_inicial, data_final } = req.query;
-   const filtros = [];
-   const params  = [];
+  const [rows] = await pool.query(sql, params);
+  res.json(rows);
+});
 
-   if (data_inicial && data_final) {
-     filtros.push('vp.data_venda BETWEEN ? AND ?');
-     params.push(data_inicial, data_final);
-   }
+// ───────────────────────────────────────────────────────────
+// 2)  GET /financeiro/vendas-produtos      (filtrada)
+// ───────────────────────────────────────────────────────────
+router.get('/vendas-produtos', async (req,res) =>{
+  const { data_inicial, data_final } = req.query;
 
-   const where = filtros.length ? 'WHERE ' + filtros.join(' AND ') : '';
-   const [rows] = await pool.query(
-     `SELECT vp.*, p.nome AS produto_nome
-        FROM venda_produto vp
-        LEFT JOIN produto p ON p.id = vp.produto_id
-      ${where}
-      ORDER BY vp.data_venda DESC`,
-     params
-   );
-   res.json(rows);
- });
+  let sql = `SELECT quantidade, preco_unitario FROM venda_produto WHERE 1=1`;
+  const params = [];
+  if (data_inicial){ sql+=' AND data_venda >= ?'; params.push(data_inicial); }
+  if (data_final)  { sql+=' AND data_venda <= ?'; params.push(data_final); }
 
- // ───────────── 4. FLUXO DE CAIXA ─────────────
- router.get('/fluxo', async (req, res) => {
-   try {
-     const { periodo = 'mensal' } = req.query;
+  const [rows] = await pool.query(sql, params);
+  res.json(rows);
+});
 
-     const hoje   = new Date();
-     let   inicio = new Date();
+// ───────────────────────────────────────────────────────────
+// 3)  GET /financeiro/fluxo         (Entradas × Saídas por dia)
+// ───────────────────────────────────────────────────────────
+router.get('/fluxo', async (req, res) => {
+  try {
+    const { periodo = 'mensal' } = req.query;
 
-     if (periodo === 'diario') {
-       /* hoje */
-     } else if (periodo === 'semanal') {
-       inicio.setDate(hoje.getDate() - hoje.getDay());
-     } else {
-       inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-     }
+    const hoje = new Date();
+    let inicio;
+    if (periodo === 'diario')  inicio = hoje;
+    else if (periodo === 'semanal') {
+      inicio = new Date(hoje);
+      inicio.setDate(hoje.getDate() - hoje.getDay());   // domingo
+    } else {                                            // mensal
+      inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    }
 
-     const ymd  = d => d.toISOString().slice(0, 10);
-     const params = [ymd(inicio), ymd(hoje)];
+    const ymd = d => d.toISOString().slice(0, 10);
+    const ini = ymd(inicio);
+    const fim = ymd(hoje);
 
-     /* ENTRADAS = pagamentos + vendas ----------------------------*/
-     const [entradas] = await pool.query(
-       `SELECT data, SUM(valor) total FROM (
-            SELECT DATE(p.data_pagamento) AS data, p.valor_pago          AS valor
-              FROM pagamento p
-            UNION ALL
-            SELECT DATE(vp.data_venda)     AS data, vp.quantidade*vp.preco_unitario
-              FROM venda_produto vp
-        ) x
-        WHERE data BETWEEN ? AND ?
-        GROUP BY data
-        ORDER BY data`, params);
+    /*----------------------------------------*
+     *  ENTRADAS  =  Pagamentos  +  Vendas    *
+     *----------------------------------------*/
+    const [entradas] = await pool.query(
+      `
+      SELECT DATE(d) dia, SUM(v) total
+      FROM (
+          SELECT p.data_pagamento AS d, p.valor_pago                   AS v
+          FROM   pagamento p
+          UNION ALL
+          SELECT vp.data_venda     AS d, (vp.quantidade*vp.preco_unitario) AS v
+          FROM   venda_produto vp
+      ) t
+      WHERE d BETWEEN ? AND ?
+      GROUP BY DATE(d)
+      ORDER BY DATE(d)
+      `,
+      [ini, fim]
+    );
 
-     /* SAÍDAS (se não houver tabela despesa, devolve série vazia) */
-     let saidas = [];
-     try {
-       [saidas] = await pool.query(
-         `SELECT DATE(data_despesa) data, SUM(valor) total
-            FROM despesa
-           WHERE data_despesa BETWEEN ? AND ?
-        GROUP BY data
-        ORDER BY data`, params);
-     } catch {/* ignore */}
-     
-     const s = rows => rows.map(r => ({
-       x: r.data.split('-').reverse().slice(0,2).join('/'), // DD/MM
-       y: Number(r.total)
-     }));
+    /*----------------------------------------*
+     *  SAÍDAS  (opcional)                   *
+     *----------------------------------------*/
+    let saidas = [];
+    try {
+      [saidas] = await pool.query(
+        `
+        SELECT DATE(data_despesa) dia, SUM(valor) total
+        FROM despesa
+        WHERE data_despesa BETWEEN ? AND ?
+        GROUP BY DATE(data_despesa)
+        `,
+        [ini, fim]
+      );
+    } catch (_) {
+      /* tabela despesa ainda não existe – retorna 0 */
+    }
 
-     res.json([
-       { id: 'Entradas', data: s(entradas) },
-       { id: 'Saídas',   data: s(saidas)   }
-     ]);
-   } catch (e) {
-     console.error(e);
-     res.status(500).json({ erro: 'Erro ao gerar fluxo de caixa' });
-   }
- });
+    const toSerie = (rows, id) => ({
+      id,
+      data: rows.map(r => ({
+        x: new Date(r.dia).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        y: Number(r.total)
+      }))
+    });
 
- module.exports = router;
+    res.json([
+      toSerie(entradas, 'Entradas'),
+      toSerie(saidas,   'Saídas')
+    ]);
+
+  } catch (e) {
+    console.error('fluxo', e);
+    res.status(500).json({ erro: 'Erro interno ao gerar fluxo de caixa' });
+  }
+
+  // ENTRADAS: mensalidades pagas + vendas
+  const [entradas] = await pool.query(`
+    SELECT DATE(d) AS dia, SUM(v) total
+    FROM (
+      SELECT pagamento_data AS d, valor_cobrado           AS v FROM mensalidade   WHERE status='pago'
+      UNION ALL
+      SELECT data_venda     AS d, quantidade*preco_unitario FROM venda_produto
+    ) t
+    WHERE d BETWEEN ? AND ?
+    GROUP BY DATE(d)
+    ORDER BY DATE(d)
+  `,[ini,fim]);
+
+  // SAÍDAS (se ainda não existir tabela despesa, devolve zero)
+  let saidas = [];
+  try{
+    [saidas] = await pool.query(`
+      SELECT DATE(data_despesa) dia, SUM(valor) total
+      FROM despesa
+      WHERE data_despesa BETWEEN ? AND ?
+      GROUP BY DATE(data_despesa)
+    `,[ini,fim]);
+  }catch{ /* tabela não existe – ignora */ }
+
+  const toSerie = (rows,id) => ({
+    id,
+    data: rows.map(r=>({ x:new Date(r.dia).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}), y:Number(r.total) }))
+  });
+
+  res.json([ toSerie(entradas,'Entradas'), toSerie(saidas,'Saídas') ]);
+});
+
+// ───────────────────────────────────────────────────────────
+// 4)  (já existia) GET /financeiro/resumo
+// ───────────────────────────────────────────────────────────
+router.get('/resumo', async (req,res)=>{
+  try{
+    const { periodo='mensal' } = req.query;
+    const hoje = new Date();
+    let inicio;
+    if (periodo==='diario')  inicio = hoje;
+    else if (periodo==='semanal'){ inicio=new Date(hoje); inicio.setDate(hoje.getDate()-hoje.getDay()); }
+    else inicio = new Date(hoje.getFullYear(),hoje.getMonth(),1);
+
+    const ini = ymd(inicio); const fim=ymd(hoje);
+
+    const [[mens]] = await pool.query(`
+      SELECT
+        SUM(CASE WHEN status='pago'      THEN valor_cobrado END) receita_recebida,
+        SUM(CASE WHEN status='em_aberto' THEN valor_cobrado END) pendencias
+      FROM mensalidade
+      WHERE vencimento BETWEEN ? AND ?`,[ini,fim]);
+
+    const [[vend]] = await pool.query(`
+      SELECT COALESCE(SUM(quantidade*preco_unitario),0) receita_vendas,
+             COUNT(*) total_vendas
+      FROM venda_produto
+      WHERE data_venda BETWEEN ? AND ?`,[ini,fim]);
+
+    res.json({ periodo, intervalo:{inicio:ini,fim}, mensalidades:mens, vendas:vend });
+  }catch(e){
+    console.error(e); res.status(500).json({erro:'Falha no resumo'});
+  }
+});
+// GET /financeiro/indicadores
+router.get('/indicadores', async (req, res) => {
+  try {
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const ini = ymd(inicioMes);
+    const fim = ymd(hoje);
+
+    // Receita de mensalidades pagas
+    const [[mens]] = await pool.query(`
+      SELECT
+        COALESCE(SUM(CASE WHEN status = 'pago' THEN valor_cobrado ELSE 0 END), 0) AS receita_mensalidades,
+        COALESCE(SUM(CASE WHEN status = 'em_aberto' THEN valor_cobrado ELSE 0 END), 0) AS pendencias
+      FROM mensalidade
+      WHERE vencimento BETWEEN ? AND ?
+    `, [ini, fim]);
+
+    // Receita de vendas de produtos
+    const [[vend]] = await pool.query(`
+      SELECT COALESCE(SUM(quantidade * preco_unitario), 0) AS receita_vendas
+      FROM venda_produto
+      WHERE data_venda BETWEEN ? AND ?
+    `, [ini, fim]);
+
+    // Despesas
+    let despesas = 0;
+    try {
+      const [[resDespesas]] = await pool.query(`
+        SELECT COALESCE(SUM(valor), 0) AS total
+        FROM despesa
+        WHERE data_despesa BETWEEN ? AND ?
+      `, [ini, fim]);
+      despesas = resDespesas.total;
+    } catch (_) {
+      // Tabela de despesas não existe, manter zero
+    }
+
+    const receita_total = mens.receita_mensalidades + vend.receita_vendas;
+    const saldo_atual = receita_total - despesas;
+
+    res.json({
+      receita_total,
+      despesas_total: despesas,
+      saldo_atual,
+      pendencias: mens.pendencias
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ erro: 'Erro ao gerar indicadores financeiros' });
+  }
+});
+
+module.exports = router;

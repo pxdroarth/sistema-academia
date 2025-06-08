@@ -1,61 +1,53 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 
 export default function FiltrosFinanceiro({ onAplicarFiltros }) {
-  const [dataInicial, setDataInicial] = useState("");
-  const [dataFinal, setDataFinal] = useState("");
-  const [tipoDados, setTipoDados] = useState("todos"); // "mensalidades", "vendas", "todos"
-  const [status, setStatus] = useState("todos"); // para mensalidades: "pago", "em_aberto", "todos"
+  // Estado local para os filtros, todos no formato dd/mm/yyyy
+  const [dataInicial, setDataInicial] = useState('');
+  const [dataFinal, setDataFinal] = useState('');
+  const [status, setStatus] = useState('todos');
+  const [tipoDados, setTipoDados] = useState('todos');
 
-  function aplicarFiltros() {
-    onAplicarFiltros({ dataInicial, dataFinal, tipoDados, status });
+  function aplicar() {
+    onAplicarFiltros({
+      dataInicial,
+      dataFinal,
+      status,
+      tipoDados
+    });
   }
 
   return (
-    <div className="p-4 bg-white rounded shadow mb-4 flex flex-wrap gap-4 items-end">
+    <div className="mb-6 flex flex-wrap gap-4 items-end">
+      {/* Inputs de data (tipo texto com máscara, ou tipo date se quiser) */}
       <div>
-        <label className="block mb-1 font-semibold" htmlFor="dataInicial">Data Inicial</label>
+        <label className="block text-sm font-medium mb-1">Data Inicial</label>
         <input
-          id="dataInicial"
-          type="date"
+          type="text"
+          placeholder="dd/mm/aaaa"
           value={dataInicial}
           onChange={e => setDataInicial(e.target.value)}
-          className="border rounded px-2 py-1"
+          className="border rounded px-2 py-1 w-32"
         />
       </div>
 
       <div>
-        <label className="block mb-1 font-semibold" htmlFor="dataFinal">Data Final</label>
+        <label className="block text-sm font-medium mb-1">Data Final</label>
         <input
-          id="dataFinal"
-          type="date"
+          type="text"
+          placeholder="dd/mm/aaaa"
           value={dataFinal}
           onChange={e => setDataFinal(e.target.value)}
-          className="border rounded px-2 py-1"
+          className="border rounded px-2 py-1 w-32"
         />
       </div>
 
+      {/* Status */}
       <div>
-        <label className="block mb-1 font-semibold" htmlFor="tipoDados">Tipo de Dados</label>
+        <label className="block text-sm font-medium mb-1">Status</label>
         <select
-          id="tipoDados"
-          value={tipoDados}
-          onChange={e => setTipoDados(e.target.value)}
-          className="border rounded px-2 py-1"
-        >
-          <option value="todos">Todos</option>
-          <option value="mensalidades">Mensalidades</option>
-          <option value="vendas">Vendas</option>
-        </select>
-      </div>
-
-      <div>
-        <label className="block mb-1 font-semibold" htmlFor="statusMensalidades">Status (Mensalidades)</label>
-        <select
-          id="statusMensalidades"
           value={status}
           onChange={e => setStatus(e.target.value)}
-          className="border rounded px-2 py-1"
-          disabled={tipoDados !== "mensalidades" && tipoDados !== "todos"}
+          className="border rounded px-2 py-1 w-32"
         >
           <option value="todos">Todos</option>
           <option value="pago">Pago</option>
@@ -63,12 +55,30 @@ export default function FiltrosFinanceiro({ onAplicarFiltros }) {
         </select>
       </div>
 
-      <button
-        onClick={aplicarFiltros}
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-      >
-        Aplicar
-      </button>
+      {/* Tipo de Dados */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Tipo de Dados</label>
+        <select
+          value={tipoDados}
+          onChange={e => setTipoDados(e.target.value)}
+          className="border rounded px-2 py-1 w-32"
+        >
+          <option value="todos">Todos</option>
+          <option value="mensalidades">Mensalidades</option>
+          <option value="vendas">Vendas</option>
+        </select>
+      </div>
+
+      {/* Botão aplicar */}
+      <div>
+        <button
+          onClick={aplicar}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+          type="button"
+        >
+          Aplicar
+        </button>
+      </div>
     </div>
   );
 }
