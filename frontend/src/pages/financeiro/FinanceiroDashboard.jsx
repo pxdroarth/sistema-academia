@@ -43,6 +43,7 @@ export default function FinanceiroDashboard() {
   const [dadosVendas, setDadosVendas] = useState([]);
   const [fluxoCaixa, setFluxoCaixa] = useState([]);
   const [kpis, setKpis] = useState(null);
+  
 
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState(null);
@@ -65,7 +66,7 @@ export default function FinanceiroDashboard() {
 
       try {
         // Buscar KPIs
-        const resKpis = await fetch(`http://localhost:3001/financeiro/indicadores`);
+        const resKpis = await fetch(`http://localhost:3001/financeiro/indicadores?periodo=${periodo}`);
         if (!resKpis.ok) throw new Error('Erro ao buscar KPIs');
         const jsonKpis = await resKpis.json();
         setKpis(jsonKpis);

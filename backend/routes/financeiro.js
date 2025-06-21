@@ -183,12 +183,23 @@ router.get('/resumo', async (req,res)=>{
     console.error(e); res.status(500).json({erro:'Falha no resumo'});
   }
 });
-// GET /financeiro/indicadores
+// GET /financeiro/indicadores?periodo=diario|semanal|mensal
 router.get('/indicadores', async (req, res) => {
   try {
+    const { periodo = 'mensal' } = req.query;
+
     const hoje = new Date();
-    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    const ini = ymd(inicioMes);
+    let inicio;
+    if (periodo === 'diario') {
+      inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    } else if (periodo === 'semanal') {
+      inicio = new Date(hoje);
+      inicio.setDate(hoje.getDate() - hoje.getDay());
+    } else {
+      inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    }
+
+    const ini = ymd(inicio);
     const fim = ymd(hoje);
 
     // Receita de mensalidades pagas
@@ -197,7 +208,7 @@ router.get('/indicadores', async (req, res) => {
         COALESCE(SUM(CASE WHEN status = 'pago' THEN valor_cobrado ELSE 0 END), 0) AS receita_mensalidades,
         COALESCE(SUM(CASE WHEN status = 'em_aberto' THEN valor_cobrado ELSE 0 END), 0) AS pendencias
       FROM mensalidade
-      WHERE vencimento BETWEEN ? AND ?
+      WHERE data_pagamento BETWEEN ? AND ?
     `, [ini, fim]);
 
     // Receita de vendas de produtos
