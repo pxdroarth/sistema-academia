@@ -1,14 +1,14 @@
-const mysql = require('mysql2/promise');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 
-const pool = mysql.createPool({
-  host: '127.0.0.1',       // Host do seu banco (localhost)
-  port: 3306,              // Porta padrão do MySQL
-  user: 'root',            // Usuário
-  password: '',            // Sem senha, campo vazio
-  database: 'academia',    // Nome do banco que você vai usar
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+const dbPath = path.resolve(__dirname, 'academia.sqlite');
+
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('❌ Erro ao conectar ao banco de dados:', err.message);
+  } else {
+    console.log('✅ Banco de dados SQLite conectado com sucesso.');
+  }
 });
 
-module.exports = pool;
+module.exports = db;

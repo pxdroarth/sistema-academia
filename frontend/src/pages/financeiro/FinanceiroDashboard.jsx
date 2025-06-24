@@ -3,7 +3,7 @@ import {
   GraficoBarraReceitaPendenciasVendas,
   GraficoPizzaMensalidades,
   GraficoFluxoCaixa,
-} from './GraficosFinanceiro';
+} from './modals/GraficosFinanceiro';
 import FiltrosFinanceiro from './FiltrosFinanceiro';
 
 const PERIODOS = ['diario', 'semanal', 'mensal'];

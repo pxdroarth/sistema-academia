@@ -9,9 +9,13 @@ import PlanosPage from "./pages/planos/PlanosPage";
 import ProdutosPage from "./pages/produtos/ProdutosPage";
 import VendasProdutosPage from "./pages/vendasProdutos/VendasProdutosPage";
 import PagamentoAntecipado from './pages/mensalidades/PagamentoAntecipado';
+import PlanoContasPage from './pages/financeiro/PlanoContasPage';
+
+
+// ✅ Módulo Financeiro
+import FinanceiroLayout from './pages/financeiro/FinanceiroLayout';
 import FinanceiroDashboard from "./pages/financeiro/FinanceiroDashboard";
-
-
+import ContasFinanceirasPage from './pages/financeiro/ContasFinanceirasPage';
 
 // Wrapper para passar o alunoId da URL para o componente
 function PagamentoAntecipadoWrapper() {
@@ -24,22 +28,29 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Toda rota que deve mostrar Header e Sidebar deve estar dentro de Layout */}
+        {/* Todas as rotas com layout fixo (sidebar, header) */}
         <Route element={<Layout />}>
+          {/* Redirecionamento */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+          {/* Rotas principais */}
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/alunos" element={<AlunosPage />} />
-          <Route path="/planos" element={<PlanosPage />} />
           <Route path="/alunos/novo" element={<FormAlunoPage />} />
           <Route path="/alunos/:id" element={<PerfilPage />} />
           <Route path="/alunos/editar/:id" element={<FormAlunoPage />} />
+          <Route path="/planos" element={<PlanosPage />} />
           <Route path="/produtos" element={<ProdutosPage />} />
           <Route path="/vendas-produtos" element={<VendasProdutosPage />} />
-          <Route path="/financeiro" element={<FinanceiroDashboard />} />
-
-          {/* Nova rota para pagamento antecipado */}
           <Route path="/mensalidades/pagamento-antecipado/:alunoId" element={<PagamentoAntecipadoWrapper />} />
 
+          {/* ✅ Módulo Financeiro com rotas aninhadas */}
+          <Route path="/financeiro" element={<FinanceiroLayout />}>
+            <Route index element={<FinanceiroDashboard />} />
+            <Route path="contas-financeiras" element={<ContasFinanceirasPage />} />
+            <Route path="plano-contas" element={<PlanoContasPage />} />
+            {/* Aqui você poderá adicionar futuras rotas como relatórios, despesas, etc */}
+          </Route>
         </Route>
       </Routes>
     </Router>
