@@ -49,6 +49,16 @@ sistema-academia/
 - Cadastro e venda de **produtos** (água, suplementos, etc.).
 - Visualização do **perfil do aluno** com abas (informações, mensalidades, acessos).
 - Controle de estoque automático ao realizar vendas.
+- ### 🔄 Automação com Node-Cron
+
+O sistema executa um job diário via [node-cron](https://www.npmjs.com/package/node-cron) que:
+
+- Verifica todos os alunos no banco SQLite;
+- Identifica aqueles com mensalidade vencida ou não paga no mês atual;
+- Atualiza o status de acesso como "bloqueado";
+- Garante que somente alunos **com pagamento em dia** possam ter acesso **liberado** pela catraca facial (integração Hikvision API).
+
+Essa automação torna o sistema robusto e elimina a necessidade de controle manual de inadimplência.
 
 ## Instalação e Execução Local
 
