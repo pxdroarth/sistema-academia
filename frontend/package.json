@@ -11,8 +11,15 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
+<<<<<<< HEAD
     "lucide-react": "^0.522.0",
     "react": "^18.2.0",
+=======
+    "apexcharts": "^4.7.0",
+    "lucide-react": "^0.522.0",
+    "react": "^18.2.0",
+    "react-apexcharts": "^1.7.0",
+>>>>>>> 8417fe8 (atualizacao de componentes)
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.56.4",
     "react-router-dom": "^7.6.0",

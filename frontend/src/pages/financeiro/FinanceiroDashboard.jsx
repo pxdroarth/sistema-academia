@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import {
   GraficoBarraReceitaPendenciasVendas,
@@ -182,6 +183,56 @@ export default function FinanceiroDashboard() {
           </div>
         </>
       )}
+=======
+import React, { useEffect, useState } from "react";
+import KpiCard from "../../components/financeiro/KpiCard";
+import ApexLineChart from "../../components/financeiro/ApexLineChart";
+import ApexPieChart from "../../components/financeiro/ApexPieChart";
+
+export default function FinanceiroDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [kpis, setKpis] = useState(null);
+  const [fluxo, setFluxo] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+
+  // Filtros (padrão mensal)
+  const [periodo, setPeriodo] = useState("mensal");
+
+  useEffect(() => {
+    setLoading(true);
+    // Supondo que você tenha endpoints: /financeiro-erp/kpis, /financeiro-erp/fluxo, /financeiro-erp/categorias
+    Promise.all([
+      fetch(`/financeiro-erp/kpis?periodo=${periodo}`).then(r => r.json()),
+      fetch(`/financeiro-erp/fluxo?periodo=${periodo}`).then(r => r.json()),
+      fetch(`/financeiro-erp/categorias?periodo=${periodo}`).then(r => r.json())
+    ])
+      .then(([kpis, fluxo, categorias]) => {
+        setKpis(kpis);
+        setFluxo(fluxo);
+        setCategorias(categorias);
+      })
+      .catch(e => {
+        setKpis(null);
+        setFluxo([]);
+        setCategorias([]);
+      })
+      .finally(() => setLoading(false));
+  }, [periodo]);
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex flex-wrap gap-4">
+        <KpiCard title="Faturamento Recebido" value={kpis?.faturamento_recebido} loading={loading} />
+        <KpiCard title="Faturamento Presumido" value={kpis?.faturamento_presumido} loading={loading} />
+        <KpiCard title="Total em Clientes (Pendente)" value={kpis?.total_clientes_pendentes} loading={loading} />
+        <KpiCard title="Despesas Pagas" value={kpis?.despesas_pagas} loading={loading} />
+        <KpiCard title="Lucro Real" value={kpis?.lucro_real} loading={loading} />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ApexLineChart title="Fluxo de Caixa" data={fluxo} loading={loading} />
+        <ApexPieChart title="Receita por Categoria" data={categorias} loading={loading} />
+      </div>
+>>>>>>> 8417fe8 (atualizacao de componentes)
     </div>
   );
 }
