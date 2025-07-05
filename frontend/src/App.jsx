@@ -11,7 +11,6 @@ import VendasProdutosPage from "./pages/vendasProdutos/VendasProdutosPage";
 import PagamentoAntecipado from './pages/mensalidades/PagamentoAntecipado';
 import PlanoContasPage from './pages/financeiro/PlanoContasPage';
 
-
 // ✅ Módulo Financeiro
 import FinanceiroLayout from './pages/financeiro/FinanceiroLayout';
 import FinanceiroDashboard from "./pages/financeiro/FinanceiroDashboard";
@@ -47,10 +46,7 @@ function App() {
           {/* ✅ Módulo Financeiro com rotas aninhadas */}
           <Route path="/financeiro" element={<FinanceiroLayout />}>
             <Route index element={<FinanceiroDashboard />} />
-<<<<<<< HEAD
-=======
             <Route path="dashboard" element={<FinanceiroDashboard />} />
->>>>>>> 8417fe8 (atualizacao de componentes)
             <Route path="contas-financeiras" element={<ContasFinanceirasPage />} />
             <Route path="plano-contas" element={<PlanoContasPage />} />
             {/* Aqui você poderá adicionar futuras rotas como relatórios, despesas, etc */}

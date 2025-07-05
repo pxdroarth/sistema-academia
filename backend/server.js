@@ -4,6 +4,11 @@ const port = 3001;
 require('./cron');
 const seedPlanoContas = require('./seeds/seedPlanoContas');
 seedPlanoContas(); // popula dados fixos se necessário
+const dashboardRouter = require('./routes/dashboard');
+const ativosRouter = require('./routes/ativos');
+const orcamentoRouter = require('./routes/orcamento');
+
+
 
 
 const cors = require('cors');
@@ -22,6 +27,10 @@ app.use('/financeiro', require('./routes/financeiro'));
 app.use('/relatorios', require('./routes/relatorios'));
 app.use('/plano-contas', require('./routes/planoContas'));
 app.use('/contas-financeiras', require('./routes/contasFinanceiras'));
+app.use('/dashboard', dashboardRouter);
+app.use('/financeiro/ativos', ativosRouter);
+app.use('/financeiro/orcamento', orcamentoRouter);
+
 
 
 

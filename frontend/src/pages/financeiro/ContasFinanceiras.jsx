@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { runQuery, runGet, runExecute } = require('../dbHelper');
 
-// Utilitário para validação de campos obrigatórios
+// Validação de campos obrigatórios
 function validarCamposObrigatorios(body, campos) {
   for (const campo of campos) {
     if (!body[campo]) return `Campo obrigatório ausente: ${campo}`;
@@ -14,27 +14,34 @@ function validarCamposObrigatorios(body, campos) {
 router.get('/', async (req, res) => {
   const { tipo, status, data_inicial, data_final } = req.query;
   const params = [];
-  let sql = `SELECT * FROM conta_financeira WHERE 1=1`;
+  let sql = `
+    SELECT cf.*, pc.nome AS plano_nome
+    FROM conta_financeira cf
+    LEFT JOIN plano_contas pc ON cf.plano_contas_id = pc.id
+    WHERE 1=1
+  `;
 
   if (tipo && tipo !== 'todos') {
-    sql += ' AND tipo = ?';
+    sql += ' AND cf.tipo = ?';
     params.push(tipo);
   }
   if (status && status !== 'todos') {
-    sql += ' AND status = ?';
+    sql += ' AND cf.status = ?';
     params.push(status);
   }
   if (data_inicial) {
-    sql += ' AND date(data_lancamento) >= date(?)';
+    sql += ' AND date(cf.data_lancamento) >= date(?)';
     params.push(data_inicial);
   }
   if (data_final) {
-    sql += ' AND date(data_lancamento) <= date(?)';
+    sql += ' AND date(cf.data_lancamento) <= date(?)';
     params.push(data_final);
   }
 
+  sql += ' ORDER BY cf.data_lancamento DESC';
+
   try {
-    const rows = await runQuery(`${sql} ORDER BY data_lancamento DESC`, params);
+    const rows = await runQuery(sql, params);
     res.json(rows);
   } catch (e) {
     console.error('[ERRO GET contas-financeiras]', e);
@@ -50,10 +57,18 @@ router.post('/', async (req, res) => {
 
   try {
     const result = await runExecute(`
-      INSERT INTO conta_financeira (descricao, tipo, valor, data_lancamento, status, plano_contas_id, observacao, created_at)
+      INSERT INTO conta_financeira 
+      (descricao, tipo, valor, data_lancamento, status, plano_contas_id, observacao, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `, [descricao, tipo, valor, data_lancamento, status, plano_contas_id || null, observacao || null]);
-
+    `, [
+      descricao,
+      tipo,
+      valor,
+      data_lancamento,
+      status,
+      plano_contas_id || null,
+      observacao || null
+    ]);
     res.status(201).json({ id: result.id });
   } catch (e) {
     console.error('[ERRO POST contas-financeiras]', e);
@@ -71,9 +86,19 @@ router.put('/:id', async (req, res) => {
       UPDATE conta_financeira
       SET descricao = ?, tipo = ?, valor = ?, data_lancamento = ?, status = ?, plano_contas_id = ?, observacao = ?, updated_at = datetime('now')
       WHERE id = ?
-    `, [descricao, tipo, valor, data_lancamento, status, plano_contas_id || null, observacao || null, id]);
+    `, [
+      descricao,
+      tipo,
+      valor,
+      data_lancamento,
+      status,
+      plano_contas_id || null,
+      observacao || null,
+      id
+    ]);
 
-    if (result.changes === 0) return res.status(404).json({ error: 'Conta não encontrada' });
+    if (result.changes === 0)
+      return res.status(404).json({ error: 'Conta não encontrada' });
     res.json({ message: 'Atualizado com sucesso' });
   } catch (e) {
     console.error('[ERRO PUT contas-financeiras]', e);
@@ -85,8 +110,11 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   try {
-    const result = await runExecute('DELETE FROM conta_financeira WHERE id = ?', [id]);
-    if (result.changes === 0) return res.status(404).json({ error: 'Conta não encontrada para excluir' });
+    const result = await runExecute(
+      'DELETE FROM conta_financeira WHERE id = ?', [id]
+    );
+    if (result.changes === 0)
+      return res.status(404).json({ error: 'Conta não encontrada para excluir' });
     res.json({ message: 'Conta excluída com sucesso' });
   } catch (e) {
     console.error('[ERRO DELETE contas-financeiras]', e);

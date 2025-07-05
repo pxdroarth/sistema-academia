@@ -1,238 +1,168 @@
-<<<<<<< HEAD
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { getDashboardKPIs } from '../../services/dashboardService';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import {
-  GraficoBarraReceitaPendenciasVendas,
-  GraficoPizzaMensalidades,
-  GraficoFluxoCaixa,
-} from './modals/GraficosFinanceiro';
-import FiltrosFinanceiro from './FiltrosFinanceiro';
-
-const PERIODOS = ['diario', 'semanal', 'mensal'];
-
-/* ---------- COMPONENTE CARD KPI ---------- */
-function CardKpi({ title, value, color = 'text-gray-800' }) {
-  return (
-    <div className="flex flex-col bg-white rounded shadow p-4 w-full sm:w-40">
-      <span className="text-xs text-gray-500">{title}</span>
-      <span className={`text-xl font-bold ${color}`}>
-        R$ {Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-      </span>
-    </div>
-  );
-}
-/* ----------------------------------------- */
-
-// Função para formatar data dd/mm/yyyy para yyyy-mm-dd (ISO)
-function formataDataISO(dataStr) {
-  if (!dataStr) return '';
-  const [dia, mes, ano] = dataStr.split('/');
-  if (!dia || !mes || !ano) return '';
-  return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
-}
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend
+} from 'recharts';
 
 export default function FinanceiroDashboard() {
+  const [kpis, setKpis] = useState({
+    despesas_top5: [],
+    receitas_categoria: []
+  });
+  const [erro, setErro] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [periodo, setPeriodo] = useState('mensal');
 
-  const [filtros, setFiltros] = useState({
-    dataInicial: '',
-    dataFinal: '',
-    tipoDados: 'todos',
-    status: 'todos',
-  });
+  useEffect(() => {
+    carregarKPIs(periodo);
+  }, [periodo]);
 
-  const [dadosMensalidades, setDadosMensalidades] = useState([]);
-  const [dadosVendas, setDadosVendas] = useState([]);
-  const [fluxoCaixa, setFluxoCaixa] = useState([]);
-  const [kpis, setKpis] = useState(null);
-  
-
-  const [loading, setLoading] = useState(false);
-  const [erro, setErro] = useState(null);
-
-  function mudarPeriodo(p) {
-    setPeriodo(p);
-    setFiltros(prev => ({
-      ...prev,
-      dataInicial: '',
-      dataFinal: '',
-      tipoDados: 'todos',
-      status: 'todos',
-    }));
+  async function carregarKPIs(periodoSelecionado) {
+    setLoading(true);
+    setErro(null);
+    try {
+      const dados = await getDashboardKPIs({ periodo: periodoSelecionado });
+      setKpis({
+        ...dados,
+        despesas_top5: dados.despesas_top5 || [],
+        receitas_categoria: dados.receitas_categoria || []
+      });
+    } catch (err) {
+      setErro('Falha ao carregar dashboard.');
+    } finally {
+      setLoading(false);
+    }
   }
 
-  useEffect(() => {
-    async function buscarDados() {
-      setLoading(true);
-      setErro(null);
+  const formatoReal = (valor) =>
+    valor?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00';
 
-      try {
-        // Buscar KPIs
-        const resKpis = await fetch(`http://localhost:3001/financeiro/indicadores?periodo=${periodo}`);
-        if (!resKpis.ok) throw new Error('Erro ao buscar KPIs');
-        const jsonKpis = await resKpis.json();
-        setKpis(jsonKpis);
-
-        // Montar query-string com datas formatadas
-        const qs = new URLSearchParams();
-        if (filtros.dataInicial) qs.append('data_inicial', formataDataISO(filtros.dataInicial));
-        if (filtros.dataFinal) qs.append('data_final', formataDataISO(filtros.dataFinal));
-        if (filtros.status !== 'todos') qs.append('status', filtros.status);
-
-        // Fluxo de caixa
-        const resFluxo = await fetch(`http://localhost:3001/financeiro/fluxo?dias=30&${qs}`);
-        if (!resFluxo.ok) throw new Error('Erro ao buscar fluxo de caixa');
-        const jsonFluxo = await resFluxo.json();
-        setFluxoCaixa(jsonFluxo);
-
-        // Dados detalhados mensalidades
-        if (filtros.tipoDados === 'mensalidades' || filtros.tipoDados === 'todos') {
-          const res = await fetch(`http://localhost:3001/financeiro/mensalidades?${qs}`);
-          if (!res.ok) throw new Error('Erro ao buscar mensalidades');
-          setDadosMensalidades(await res.json());
-        } else {
-          setDadosMensalidades([]);
-        }
-
-        // Dados detalhados vendas
-        if (filtros.tipoDados === 'vendas' || filtros.tipoDados === 'todos') {
-          const res = await fetch(`http://localhost:3001/financeiro/vendas-produtos?${qs}`);
-          if (!res.ok) throw new Error('Erro ao buscar vendas');
-          setDadosVendas(await res.json());
-        } else {
-          setDadosVendas([]);
-        }
-      } catch (e) {
-        setErro(e.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    buscarDados();
-  }, [filtros, periodo]);
-
-  const totalRecebido = dadosMensalidades.reduce(
-    (acc, m) => acc + (m.status === 'pago' ? Number(m.valor_cobrado) || 0 : 0), 0);
-  const totalPendentes = dadosMensalidades.reduce(
-    (acc, m) => acc + (m.status === 'em_aberto' ? Number(m.valor_cobrado) || 0 : 0), 0);
-  const totalVendas = dadosVendas.reduce(
-    (acc, v) => acc + ((v.quantidade || 0) * (v.preco_unitario || 0)), 0);
-
-  const barData = [{
-    periodo: periodo.charAt(0).toUpperCase() + periodo.slice(1),
-    Receita: Number(totalRecebido.toFixed(2)),
-    Pendencias: Number(totalPendentes.toFixed(2)),
-    Vendas: Number(totalVendas.toFixed(2)),
-  }];
-
-  const pieData = [
-    { id: 'Recebido', label: 'Recebido', value: Number(totalRecebido.toFixed(2)), color: 'green' },
-    { id: 'Pendente', label: 'Pendente', value: Number(totalPendentes.toFixed(2)), color: 'red' },
-  ];
+  const periodos = ['diario', 'semanal', 'mensal'];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6 text-blue-700">Dashboard Financeiro</h1>
+    <div className="p-6 space-y-6">
+      <h2 className="text-2xl font-semibold">Dashboard Financeiro</h2>
 
-      {/* Períodos sem cursor pointer nem hover */}
-      <div className="mb-4">
-        <label className="font-semibold mr-4">Período:</label>
-        {PERIODOS.map(p => (
+      {/* Botões de filtro período */}
+      <div className="flex gap-2 mb-4">
+        {periodos.map((p) => (
           <button
             key={p}
-            onClick={() => mudarPeriodo(p)}
-            className={`px-3 py-1 mr-2 rounded ${periodo === p ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-            style={{ cursor: 'default' }}
+            className={`px-4 py-2 rounded ${
+              periodo === p ? 'bg-blue-600 text-white' : 'bg-gray-200'
+            }`}
+            onClick={() => setPeriodo(p)}
           >
             {p.charAt(0).toUpperCase() + p.slice(1)}
           </button>
         ))}
       </div>
 
-      {/* Cards KPIs */}
-      {kpis && (
-        <div className="flex flex-wrap gap-4 mb-6">
-          <CardKpi title="Receita Total" value={kpis.receita_total} color="text-green-600" />
-          <CardKpi title="Despesas" value={kpis.despesas_total} color="text-red-600" />
-          <CardKpi title="Saldo Atual" value={kpis.saldo_atual} color="text-blue-600" />
-          <CardKpi title="Pendências" value={kpis.pendencias} color="text-orange-500" />
-        </div>
-      )}
+      {loading && <div className="text-center">Carregando...</div>}
+      {erro && <div className="text-center text-red-600">{erro}</div>}
 
-      <FiltrosFinanceiro onAplicarFiltros={setFiltros} />
-
-      {loading && <p>Carregando dados...</p>}
-      {erro && <p className="text-red-600">Erro: {erro}</p>}
-
-      {!loading && (
+      {!loading && !erro && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-96 mt-6 bg-white p-4 rounded shadow">
-            <div>
-              <h2 className="mb-2 font-semibold">Receitas × Pendências × Vendas</h2>
-              <GraficoBarraReceitaPendenciasVendas data={barData} periodo={periodo} />
-            </div>
-
-            <div>
-              <h2 className="mb-2 font-semibold">Mensalidades Pagas × Pendentes</h2>
-              <GraficoPizzaMensalidades data={pieData} />
-            </div>
+          {/* KPIs principais */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <CardKPI titulo="Receita Real" valor={formatoReal(kpis.receita_real)} cor="green" />
+            <CardKPI titulo="Despesas Pagas" valor={formatoReal(kpis.despesas_pagas)} cor="red" />
+            <CardKPI
+              titulo="Lucro Real"
+              valor={formatoReal(kpis.lucro_real)}
+              cor={kpis.lucro_real >= 0 ? 'green' : 'red'}
+            />
           </div>
 
-          <div className="mt-8 bg-white p-4 rounded shadow h-80">
-            <h2 className="mb-2 font-semibold">Fluxo de Caixa (últimos 30 dias)</h2>
-            <GraficoFluxoCaixa data={fluxoCaixa} />
+          {/* KPIs adicionais */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <CardKPI titulo="Saldo Atual" valor={formatoReal(kpis.saldo_atual)} />
+            <CardKPI titulo="Receitas a Receber" valor={formatoReal(kpis.a_receber)} />
+            <CardKPI titulo="Despesas a Pagar" valor={formatoReal(kpis.a_pagar)} />
+          </div>
+
+          {/* Clientes e Variação mensal */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardKPI titulo="Clientes Pendentes" valor={kpis.clientes_pendentes} />
+            <CardKPI
+              titulo="Variação Receita Mensal"
+              valor={`${kpis.variacao_receita_mensal?.toFixed(2)}%`}
+            >
+              {kpis.variacao_receita_mensal >= 0 ? (
+                <TrendingUp className="text-green-500" />
+              ) : (
+                <TrendingDown className="text-red-500" />
+              )}
+            </CardKPI>
+          </div>
+
+          {/* Gráficos */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card titulo="Despesas por Categoria (Top 5)">
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={kpis.despesas_top5}
+                    dataKey="total"
+                    nameKey="categoria"
+                    label
+                  >
+                    {kpis.despesas_top5.map((_, idx) => (
+                      <Cell
+                        key={idx}
+                        fill={`hsl(${idx * 72}, 70%, 50%)`}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </Card>
+
+            <Card titulo="Receitas por Categoria">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={kpis.receitas_categoria}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="categoria" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="total" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
           </div>
         </>
       )}
-=======
-import React, { useEffect, useState } from "react";
-import KpiCard from "../../components/financeiro/KpiCard";
-import ApexLineChart from "../../components/financeiro/ApexLineChart";
-import ApexPieChart from "../../components/financeiro/ApexPieChart";
-
-export default function FinanceiroDashboard() {
-  const [loading, setLoading] = useState(true);
-  const [kpis, setKpis] = useState(null);
-  const [fluxo, setFluxo] = useState([]);
-  const [categorias, setCategorias] = useState([]);
-
-  // Filtros (padrão mensal)
-  const [periodo, setPeriodo] = useState("mensal");
-
-  useEffect(() => {
-    setLoading(true);
-    // Supondo que você tenha endpoints: /financeiro-erp/kpis, /financeiro-erp/fluxo, /financeiro-erp/categorias
-    Promise.all([
-      fetch(`/financeiro-erp/kpis?periodo=${periodo}`).then(r => r.json()),
-      fetch(`/financeiro-erp/fluxo?periodo=${periodo}`).then(r => r.json()),
-      fetch(`/financeiro-erp/categorias?periodo=${periodo}`).then(r => r.json())
-    ])
-      .then(([kpis, fluxo, categorias]) => {
-        setKpis(kpis);
-        setFluxo(fluxo);
-        setCategorias(categorias);
-      })
-      .catch(e => {
-        setKpis(null);
-        setFluxo([]);
-        setCategorias([]);
-      })
-      .finally(() => setLoading(false));
-  }, [periodo]);
-
-  return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-wrap gap-4">
-        <KpiCard title="Faturamento Recebido" value={kpis?.faturamento_recebido} loading={loading} />
-        <KpiCard title="Faturamento Presumido" value={kpis?.faturamento_presumido} loading={loading} />
-        <KpiCard title="Total em Clientes (Pendente)" value={kpis?.total_clientes_pendentes} loading={loading} />
-        <KpiCard title="Despesas Pagas" value={kpis?.despesas_pagas} loading={loading} />
-        <KpiCard title="Lucro Real" value={kpis?.lucro_real} loading={loading} />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ApexLineChart title="Fluxo de Caixa" data={fluxo} loading={loading} />
-        <ApexPieChart title="Receita por Categoria" data={categorias} loading={loading} />
-      </div>
->>>>>>> 8417fe8 (atualizacao de componentes)
     </div>
   );
 }
+
+// Componentes auxiliares
+const CardKPI = ({ titulo, valor, cor = 'black', children }) => (
+  <div className="shadow-sm bg-white rounded p-4">
+    <p className="text-gray-500">{titulo}</p>
+    <div className="flex items-center gap-2">
+      <span className={`text-2xl font-bold text-${cor}-500`}>{valor}</span>
+      {children}
+    </div>
+  </div>
+);
+
+const Card = ({ titulo, children }) => (
+  <div className="shadow-sm bg-white rounded p-4">
+    <h3 className="text-lg font-semibold mb-2">{titulo}</h3>
+    {children}
+  </div>
+);

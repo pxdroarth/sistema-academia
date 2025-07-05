@@ -20,13 +20,13 @@ export default function PlanoContasPage() {
   const [erro, setErro] = useState(null);
 
   const carregarContas = async () => {
-  try {
-    const data = await getPlanoContas(); // corrigido
-    setContas(data);
-  } catch (e) {
-    setErro("Erro ao carregar contas");
-  }
-};
+    try {
+      const data = await getPlanoContas();
+      setContas(data);
+    } catch (e) {
+      setErro("Erro ao carregar contas");
+    }
+  };
 
   useEffect(() => {
     carregarContas();

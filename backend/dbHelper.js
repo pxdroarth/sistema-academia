@@ -1,4 +1,4 @@
-const db = require('./database');
+const db = require('./database'); // seu arquivo que abre a conexão SQLite
 
 const runQuery = (sql, params = []) =>
   new Promise((resolve, reject) => {

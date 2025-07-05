@@ -1,19 +1,16 @@
+// src/services/contasFinanceiras.js
+
 const API_URL = 'http://localhost:3001/contas-financeiras';
 
-// Buscar contas com filtros opcionais
-export async function getContasFinanceiras({ tipo = 'todos', status = 'todos', data_inicial, data_final } = {}) {
-  const params = new URLSearchParams();
-  if (tipo !== 'todos') params.append('tipo', tipo);
-  if (status !== 'todos') params.append('status', status);
-  if (data_inicial) params.append('data_inicial', data_inicial);
-  if (data_final) params.append('data_final', data_final);
-
+// Buscar contas financeiras com paginação e filtros opcionais
+export async function getContasFinanceiras({ page = 1, perPage = 10, ...filtros } = {}) {
+  const params = new URLSearchParams({ page, perPage, ...filtros });
   const res = await fetch(`${API_URL}?${params.toString()}`);
   if (!res.ok) throw new Error('Erro ao buscar contas financeiras');
-  return await res.json();
+  return await res.json(); // { data, total }
 }
 
-// Criar nova conta
+// Criar nova conta financeira
 export async function criarContaFinanceira(dados) {
   const res = await fetch(API_URL, {
     method: 'POST',
@@ -24,7 +21,7 @@ export async function criarContaFinanceira(dados) {
   return await res.json();
 }
 
-// Atualizar conta
+// Atualizar conta financeira
 export async function atualizarContaFinanceira(id, dados) {
   const res = await fetch(`${API_URL}/${id}`, {
     method: 'PUT',
@@ -35,7 +32,18 @@ export async function atualizarContaFinanceira(id, dados) {
   return await res.json();
 }
 
-// Deletar conta
+// Confirmar pagamento da conta (muda status para "pago")
+export async function marcarComoPago(id) {
+  const res = await fetch(`${API_URL}/${id}/status`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: "pago" }),
+  });
+  if (!res.ok) throw new Error('Erro ao atualizar status');
+  return await res.json();
+}
+
+// Deletar conta financeira
 export async function deletarContaFinanceira(id) {
   const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Erro ao excluir conta');

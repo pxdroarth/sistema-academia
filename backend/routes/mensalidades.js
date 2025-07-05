@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { runQuery, runGet, runExecute } = require('../dbHelper');
 
-// Listar todas as mensalidades
+// 🔹 Listar todas as mensalidades
 router.get('/', async (req, res) => {
   try {
     const rows = await runQuery('SELECT * FROM mensalidade');
@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Listar mensalidades por aluno (com paginação e filtro de status)
+// 🔹 Listar mensalidades por aluno com filtros
 router.get('/aluno/:alunoId', async (req, res) => {
   const alunoId = parseInt(req.params.alunoId);
   const status = req.query.status || 'todos';
@@ -34,29 +34,23 @@ router.get('/aluno/:alunoId', async (req, res) => {
 
     const mensalidades = await runQuery(query, params);
 
-    let countQuery = 'SELECT COUNT(*) AS total FROM mensalidade WHERE aluno_id = ?';
-    const countParams = [alunoId];
-
-    if (status !== 'todos') {
-      countQuery += ' AND status = ?';
-      countParams.push(status);
-    }
-
-    const totalRow = await runGet(countQuery, countParams);
-    const total = totalRow.total;
+    const totalRow = await runGet(
+      `SELECT COUNT(*) AS total FROM mensalidade WHERE aluno_id = ?${status !== 'todos' ? ' AND status = ?' : ''}`,
+      status !== 'todos' ? [alunoId, status] : [alunoId]
+    );
 
     res.json({
       mensalidades,
-      total,
+      total: totalRow.total,
       pagina,
-      totalPaginas: Math.ceil(total / limite),
+      totalPaginas: Math.ceil(totalRow.total / limite),
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Buscar mensalidade por ID
+// 🔹 Buscar uma mensalidade por ID
 router.get('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   try {
@@ -68,9 +62,9 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Criar nova mensalidade
+// 🔹 Criar nova mensalidade
 router.post('/', async (req, res) => {
-  const { aluno_id, vencimento, valor_cobrado, desconto_aplicado, status } = req.body;
+  const { aluno_id, vencimento, valor_cobrado, desconto_aplicado = 0, status = 'em_aberto' } = req.body;
 
   if (!aluno_id || !vencimento || !valor_cobrado) {
     return res.status(400).json({ error: 'Campos obrigatórios faltando' });
@@ -79,7 +73,7 @@ router.post('/', async (req, res) => {
   try {
     const result = await runExecute(
       'INSERT INTO mensalidade (aluno_id, vencimento, valor_cobrado, desconto_aplicado, status) VALUES (?, ?, ?, ?, ?)',
-      [aluno_id, vencimento, valor_cobrado, desconto_aplicado || 0, status || 'em_aberto']
+      [aluno_id, vencimento, valor_cobrado, desconto_aplicado, status]
     );
     res.status(201).json({ id: result.id, aluno_id, vencimento, valor_cobrado, desconto_aplicado, status });
   } catch (error) {
@@ -87,24 +81,28 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Atualizar mensalidade
+// 🔹 Atualizar mensalidade
 router.put('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  const { aluno_id, vencimento, valor_cobrado, desconto_aplicado, status } = req.body;
+  const { aluno_id, vencimento, valor_cobrado, desconto_aplicado = 0, status } = req.body;
 
   try {
     const result = await runExecute(
       'UPDATE mensalidade SET aluno_id = ?, vencimento = ?, valor_cobrado = ?, desconto_aplicado = ?, status = ? WHERE id = ?',
-      [aluno_id, vencimento, valor_cobrado, desconto_aplicado || 0, status, id]
+      [aluno_id, vencimento, valor_cobrado, desconto_aplicado, status, id]
     );
-    if (result.changes === 0) return res.status(404).json({ error: 'Mensalidade não encontrada para atualizar' });
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Mensalidade não encontrada para atualizar' });
+    }
+
     res.json({ id, aluno_id, vencimento, valor_cobrado, desconto_aplicado, status });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Atualizar status
+// 🔹 Atualizar status
 router.patch('/:id/status', async (req, res) => {
   const id = parseInt(req.params.id);
   const { status } = req.body;
@@ -113,30 +111,47 @@ router.patch('/:id/status', async (req, res) => {
 
   try {
     const result = await runExecute('UPDATE mensalidade SET status = ? WHERE id = ?', [status, id]);
+
     if (result.changes === 0) return res.status(404).json({ error: 'Mensalidade não encontrada' });
+
     res.json({ id, status });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Confirmar pagamento
+// 🔹 Confirmar pagamento de mensalidade
 router.put('/:id/pagar', async (req, res) => {
   const id = parseInt(req.params.id);
+  if (!id || isNaN(id)) {
+    return res.status(400).json({ error: 'ID inválido' });
+  }
+
   try {
-    await runExecute('UPDATE mensalidade SET status = ? WHERE id = ?', ['pago', id]);
+    const result = await runExecute(
+      'UPDATE mensalidade SET status = ? WHERE id = ?',
+      ['pago', id]
+    );
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Mensalidade não encontrada' });
+    }
+
     res.json({ message: 'Mensalidade marcada como paga com sucesso' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Erro ao pagar mensalidade:', error);
+    res.status(500).json({ error: 'Erro ao pagar mensalidade' });
   }
 });
 
-// Atualizar vencimento
+// 🔹 Atualizar vencimento manualmente
 router.put('/:id/vencimento', async (req, res) => {
-  const { id } = req.params;
+  const id = parseInt(req.params.id);
   const { novoVencimento } = req.body;
 
-  if (!novoVencimento) return res.status(400).json({ error: 'Data de vencimento é obrigatória' });
+  if (!novoVencimento) {
+    return res.status(400).json({ error: 'Data de vencimento é obrigatória' });
+  }
 
   try {
     await runExecute('UPDATE mensalidade SET vencimento = ? WHERE id = ?', [novoVencimento, id]);
@@ -146,7 +161,7 @@ router.put('/:id/vencimento', async (req, res) => {
   }
 });
 
-// Pagamento antecipado múltiplo
+// 🔹 Pagamento antecipado múltiplo com desconto
 router.post('/pagamento-antecipado', async (req, res) => {
   const { mensalidadesIds, desconto = 0 } = req.body;
 
@@ -156,15 +171,18 @@ router.post('/pagamento-antecipado', async (req, res) => {
 
   try {
     const resultados = [];
+
     for (const id of mensalidadesIds) {
       const row = await runGet('SELECT * FROM mensalidade WHERE id = ?', [id]);
       if (!row) return res.status(404).json({ error: `Mensalidade ${id} não encontrada` });
 
       const valorComDesconto = row.valor_cobrado * (1 - desconto / 100);
+
       await runExecute(
         'UPDATE mensalidade SET valor_cobrado = ?, desconto_aplicado = ?, status = ? WHERE id = ?',
         [valorComDesconto, desconto, 'pago', id]
       );
+
       resultados.push({ id, valor_cobrado: valorComDesconto });
     }
 
@@ -174,19 +192,24 @@ router.post('/pagamento-antecipado', async (req, res) => {
   }
 });
 
-// Deletar mensalidade
+// 🔹 Deletar mensalidade
 router.delete('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
+
   try {
     const result = await runExecute('DELETE FROM mensalidade WHERE id = ?', [id]);
-    if (result.changes === 0) return res.status(404).json({ error: 'Mensalidade não encontrada para deletar' });
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Mensalidade não encontrada para deletar' });
+    }
+
     res.json({ message: 'Mensalidade deletada com sucesso' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Gerar mensalidades futuras
+// 🔹 Gerar mensalidades futuras
 router.post('/gerar-futuras', async (req, res) => {
   const { alunoId, planoId, meses } = req.body;
 
@@ -196,10 +219,12 @@ router.post('/gerar-futuras', async (req, res) => {
 
   try {
     const ultimas = await runQuery(
-      `SELECT vencimento FROM mensalidade WHERE aluno_id = ? ORDER BY vencimento DESC LIMIT 1`, [alunoId]
+      'SELECT vencimento FROM mensalidade WHERE aluno_id = ? ORDER BY vencimento DESC LIMIT 1',
+      [alunoId]
     );
 
     let diaVencimento;
+
     if (ultimas.length > 0) {
       diaVencimento = new Date(ultimas[0].vencimento).getDate();
     } else {
@@ -213,17 +238,19 @@ router.post('/gerar-futuras', async (req, res) => {
 
     const valorBase = plano.valor_base;
     const mensalidadesCriadas = [];
-
     const hoje = new Date();
+
     let dataInicial = ultimas.length > 0
       ? new Date(new Date(ultimas[0].vencimento).setMonth(new Date(ultimas[0].vencimento).getMonth() + 1))
       : new Date(hoje.getFullYear(), hoje.getMonth(), diaVencimento);
 
-    if (hoje.getDate() > diaVencimento) dataInicial.setMonth(dataInicial.getMonth() + 1);
+    if (hoje.getDate() > diaVencimento) {
+      dataInicial.setMonth(dataInicial.getMonth() + 1);
+    }
 
     for (let i = 0; i < meses; i++) {
       const vencimentoDate = new Date(dataInicial.getFullYear(), dataInicial.getMonth() + i, diaVencimento);
-      const vencimentoISO = vencimentoDate.toISOString().slice(0, 10);
+      const vencimentoISO = vencimentoDate.toISOString().split('T')[0];
 
       const existente = await runGet(
         'SELECT id FROM mensalidade WHERE aluno_id = ? AND vencimento = ?', [alunoId, vencimentoISO]
