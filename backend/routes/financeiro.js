@@ -2,10 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { runQuery, runGet } = require('../dbHelper');
 
-// Utilitário para datas YYYY-MM-DD
-const ymd = d => d.toISOString().slice(0, 10);
+// Utilitário para formatar datas no padrão YYYY-MM-DD
+const ymd = (d) => d.toISOString().slice(0, 10);
 
-// 1) GET /financeiro/kpis — KPIs para dashboard
+// -------------------
+// 1) KPIs da dashboard
+// -------------------
 router.get('/kpis', async (req, res) => {
   try {
     const hoje = new Date();
@@ -13,23 +15,20 @@ router.get('/kpis', async (req, res) => {
     const ini = ymd(inicio);
     const fim = ymd(hoje);
 
-    // Mensalidades (somente receitas pagas e pendentes)
     const mensalidades = await runGet(`
       SELECT
-        COALESCE(SUM(CASE WHEN status = 'pago' THEN valor_cobrado ELSE 0 END), 0) AS receita_recebida,
+        COALESCE(SUM(CASE WHEN status = 'pago' THEN valor_cobrado ELSE 0 END), 0) AS receita_mensalidades,
         COALESCE(SUM(CASE WHEN status = 'em_aberto' THEN valor_cobrado ELSE 0 END), 0) AS pendencias
       FROM mensalidade
       WHERE vencimento BETWEEN ? AND ?
     `, [ini, fim]);
 
-    // Vendas
     const vendas = await runGet(`
       SELECT COALESCE(SUM(quantidade * preco_unitario), 0) AS receita_vendas
       FROM venda_produto
       WHERE data_venda BETWEEN ? AND ?
     `, [ini, fim]);
 
-    // Despesas (tabela opcional)
     let despesas = 0;
     try {
       const r = await runGet(`
@@ -40,11 +39,13 @@ router.get('/kpis', async (req, res) => {
       despesas = r.total;
     } catch (_) {}
 
-    const receita_total = mensalidades.receita_recebida + vendas.receita_vendas;
+    const receita_total = mensalidades.receita_mensalidades + vendas.receita_vendas;
     const saldo_atual = receita_total - despesas;
 
     res.json({
       receita_total,
+      receita_mensalidades: mensalidades.receita_mensalidades,
+      receita_vendas: vendas.receita_vendas,
       despesas_total: despesas,
       saldo_atual,
       pendencias: mensalidades.pendencias
@@ -54,24 +55,32 @@ router.get('/kpis', async (req, res) => {
   }
 });
 
-// 2) GET /financeiro/fluxo — Fluxo de caixa (Entradas × Saídas por dia)
+// --------------------------------------
+// 2) Fluxo de caixa (gráfico de entradas/saídas)
+// --------------------------------------
 router.get('/fluxo', async (req, res) => {
   try {
     const { periodo = 'mensal' } = req.query;
     const hoje = new Date();
+
     let inicio;
-    if (periodo === 'diario') {
-      inicio = hoje;
-    } else if (periodo === 'semanal') {
-      inicio = new Date(hoje);
-      inicio.setDate(hoje.getDate() - hoje.getDay());
-    } else {
-      inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    switch (periodo) {
+      case 'diario':
+        inicio = hoje;
+        break;
+      case 'semanal':
+        inicio = new Date(hoje);
+        inicio.setDate(hoje.getDate() - hoje.getDay());
+        break;
+      case 'mensal':
+      default:
+        inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        break;
     }
+
     const ini = ymd(inicio);
     const fim = ymd(hoje);
 
-    // Entradas: mensalidades pagas + vendas pagas + outros créditos
     const entradas = await runQuery(`
       SELECT DATE(d) AS dia, SUM(v) AS total
       FROM (
@@ -86,7 +95,6 @@ router.get('/fluxo', async (req, res) => {
       ORDER BY DATE(d)
     `, [ini, fim]);
 
-    // Saídas: despesas pagas
     const saidas = await runQuery(`
       SELECT DATE(data_lancamento) AS dia, SUM(valor) AS total
       FROM conta_financeira
@@ -102,13 +110,18 @@ router.get('/fluxo', async (req, res) => {
       }))
     });
 
-    res.json([toSerie(entradas, 'Entradas'), toSerie(saidas, 'Saídas')]);
+    res.json([
+      toSerie(entradas, 'Entradas'),
+      toSerie(saidas, 'Saídas')
+    ]);
   } catch (e) {
     res.status(500).json({ erro: 'Erro ao gerar fluxo de caixa' });
   }
 });
 
-// 3) GET /financeiro/mensalidades — Para gráficos
+// ----------------------------
+// 3) Gráfico: Mensalidades
+// ----------------------------
 router.get('/mensalidades', async (req, res) => {
   const { data_inicial, data_final, status = 'todos' } = req.query;
   let sql = 'SELECT status, valor_cobrado FROM mensalidade WHERE 1=1';
@@ -116,6 +129,7 @@ router.get('/mensalidades', async (req, res) => {
   if (data_inicial) { sql += ' AND vencimento >= ?'; params.push(data_inicial); }
   if (data_final)   { sql += ' AND vencimento <= ?'; params.push(data_final); }
   if (status !== 'todos') { sql += ' AND status = ?'; params.push(status); }
+
   try {
     const rows = await runQuery(sql, params);
     res.json(rows);
@@ -124,13 +138,16 @@ router.get('/mensalidades', async (req, res) => {
   }
 });
 
-// 4) GET /financeiro/vendas-produtos — Para gráficos
+// ----------------------------
+// 4) Gráfico: Vendas de produtos
+// ----------------------------
 router.get('/vendas-produtos', async (req, res) => {
   const { data_inicial, data_final } = req.query;
   let sql = 'SELECT quantidade, preco_unitario FROM venda_produto WHERE 1=1';
   const params = [];
   if (data_inicial) { sql += ' AND data_venda >= ?'; params.push(data_inicial); }
   if (data_final)   { sql += ' AND data_venda <= ?'; params.push(data_final); }
+
   try {
     const rows = await runQuery(sql, params);
     res.json(rows);

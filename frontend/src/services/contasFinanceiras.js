@@ -34,14 +34,17 @@ export async function atualizarContaFinanceira(id, dados) {
 
 // Confirmar pagamento da conta (muda status para "pago")
 export async function marcarComoPago(id) {
-  const res = await fetch(`${API_URL}/${id}/status`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: "pago" }),
+  const res = await fetch(`http://localhost:3001/contas-financeiras/${id}/status`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ status: "pago" })  // Envia o novo status
   });
-  if (!res.ok) throw new Error('Erro ao atualizar status');
-  return await res.json();
+  if (!res.ok) throw new Error("Erro ao marcar como pago");
+  return res.json();
 }
+
 
 // Deletar conta financeira
 export async function deletarContaFinanceira(id) {

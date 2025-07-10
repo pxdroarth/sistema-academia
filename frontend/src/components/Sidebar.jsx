@@ -10,7 +10,7 @@ const menu = [
     label: "Financeiro",
     icon: "💸",
     submenu: [
-      { to: "/financeiro/dashboard", label: "Dashboard" },
+      { to: "/financeiro/dashboardFinanceiro", label: "Dashboard Financeiro" },
       { to: "/financeiro/contas-financeiras", label: "Contas Financeiras" },
       { to: "/financeiro/plano-contas", label: "Plano de Contas" },
       // { to: "/financeiro/relatorios", label: "Relatórios" }, // futuro

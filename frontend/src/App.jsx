@@ -11,12 +11,12 @@ import VendasProdutosPage from "./pages/vendasProdutos/VendasProdutosPage";
 import PagamentoAntecipado from './pages/mensalidades/PagamentoAntecipado';
 import PlanoContasPage from './pages/financeiro/PlanoContasPage';
 
-// ✅ Módulo Financeiro
+// ✅ Importações do Módulo Financeiro
 import FinanceiroLayout from './pages/financeiro/FinanceiroLayout';
 import FinanceiroDashboard from "./pages/financeiro/FinanceiroDashboard";
 import ContasFinanceirasPage from './pages/financeiro/ContasFinanceirasPage';
 
-// Wrapper para passar o alunoId da URL para o componente
+// Wrapper para passar o alunoId da URL para o componente de pagamento
 function PagamentoAntecipadoWrapper() {
   const params = useParams();
   const alunoId = parseInt(params.alunoId, 10);
@@ -27,17 +27,18 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Todas as rotas com layout fixo (sidebar, header) */}
+        {/* Layout base com sidebar e header */}
         <Route element={<Layout />}>
-          {/* Redirecionamento */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-          {/* Rotas principais */}
           <Route path="/dashboard" element={<Dashboard />} />
+
+          {/* Rotas de alunos */}
           <Route path="/alunos" element={<AlunosPage />} />
           <Route path="/alunos/novo" element={<FormAlunoPage />} />
           <Route path="/alunos/:id" element={<PerfilPage />} />
           <Route path="/alunos/editar/:id" element={<FormAlunoPage />} />
+
+          {/* Outros módulos */}
           <Route path="/planos" element={<PlanosPage />} />
           <Route path="/produtos" element={<ProdutosPage />} />
           <Route path="/vendas-produtos" element={<VendasProdutosPage />} />
@@ -46,10 +47,9 @@ function App() {
           {/* ✅ Módulo Financeiro com rotas aninhadas */}
           <Route path="/financeiro" element={<FinanceiroLayout />}>
             <Route index element={<FinanceiroDashboard />} />
-            <Route path="dashboard" element={<FinanceiroDashboard />} />
+            <Route path="dashboardFinanceiro" element={<FinanceiroDashboard />} />
             <Route path="contas-financeiras" element={<ContasFinanceirasPage />} />
             <Route path="plano-contas" element={<PlanoContasPage />} />
-            {/* Aqui você poderá adicionar futuras rotas como relatórios, despesas, etc */}
           </Route>
         </Route>
       </Routes>

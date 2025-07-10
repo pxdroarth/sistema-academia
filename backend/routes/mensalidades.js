@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { runQuery, runGet, runExecute } = require('../dbHelper');
+const { sincronizarFinanceiro } = require('../services/FinanceService');
 
 // 🔹 Listar todas as mensalidades
 router.get('/', async (req, res) => {
@@ -75,6 +76,7 @@ router.post('/', async (req, res) => {
       'INSERT INTO mensalidade (aluno_id, vencimento, valor_cobrado, desconto_aplicado, status) VALUES (?, ?, ?, ?, ?)',
       [aluno_id, vencimento, valor_cobrado, desconto_aplicado, status]
     );
+    await sincronizarFinanceiro();
     res.status(201).json({ id: result.id, aluno_id, vencimento, valor_cobrado, desconto_aplicado, status });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -95,7 +97,7 @@ router.put('/:id', async (req, res) => {
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Mensalidade não encontrada para atualizar' });
     }
-
+    await sincronizarFinanceiro();
     res.json({ id, aluno_id, vencimento, valor_cobrado, desconto_aplicado, status });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -111,33 +113,38 @@ router.patch('/:id/status', async (req, res) => {
 
   try {
     const result = await runExecute('UPDATE mensalidade SET status = ? WHERE id = ?', [status, id]);
-
     if (result.changes === 0) return res.status(404).json({ error: 'Mensalidade não encontrada' });
-
+    await sincronizarFinanceiro();
     res.json({ id, status });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// 🔹 Confirmar pagamento de mensalidade
+// 🔹 Confirmar pagamento e registrar na tabela pagamento
 router.put('/:id/pagar', async (req, res) => {
   const id = parseInt(req.params.id);
-  if (!id || isNaN(id)) {
-    return res.status(400).json({ error: 'ID inválido' });
-  }
 
   try {
-    const result = await runExecute(
-      'UPDATE mensalidade SET status = ? WHERE id = ?',
-      ['pago', id]
+    // Verifica se a mensalidade existe
+    const mensalidade = await runGet('SELECT * FROM mensalidade WHERE id = ?', [id]);
+    if (!mensalidade) return res.status(404).json({ error: 'Mensalidade não encontrada' });
+
+    const hoje = new Date().toISOString().split('T')[0];
+    const valor = mensalidade.valor_cobrado;
+
+    // Atualiza status da mensalidade
+    await runExecute('UPDATE mensalidade SET status = ? WHERE id = ?', ['pago', id]);
+
+    // Registra o pagamento
+    await runExecute(
+      `INSERT INTO pagamento (mensalidade_id, data_pagamento, valor_pago, valor_previsto)
+       VALUES (?, ?, ?, ?)`,
+      [id, hoje, valor, valor]
     );
 
-    if (result.changes === 0) {
-      return res.status(404).json({ error: 'Mensalidade não encontrada' });
-    }
-
-    res.json({ message: 'Mensalidade marcada como paga com sucesso' });
+    await sincronizarFinanceiro();
+    res.json({ message: 'Mensalidade paga e registrada com sucesso!' });
   } catch (error) {
     console.error('Erro ao pagar mensalidade:', error);
     res.status(500).json({ error: 'Erro ao pagar mensalidade' });
@@ -155,6 +162,7 @@ router.put('/:id/vencimento', async (req, res) => {
 
   try {
     await runExecute('UPDATE mensalidade SET vencimento = ? WHERE id = ?', [novoVencimento, id]);
+    await sincronizarFinanceiro();
     res.json({ message: 'Vencimento atualizado com sucesso' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -186,6 +194,7 @@ router.post('/pagamento-antecipado', async (req, res) => {
       resultados.push({ id, valor_cobrado: valorComDesconto });
     }
 
+    await sincronizarFinanceiro();
     res.json({ message: 'Pagamento antecipado registrado com sucesso', mensalidades: resultados });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -195,14 +204,12 @@ router.post('/pagamento-antecipado', async (req, res) => {
 // 🔹 Deletar mensalidade
 router.delete('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-
   try {
     const result = await runExecute('DELETE FROM mensalidade WHERE id = ?', [id]);
-
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Mensalidade não encontrada para deletar' });
     }
-
+    await sincronizarFinanceiro();
     res.json({ message: 'Mensalidade deletada com sucesso' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -265,6 +272,7 @@ router.post('/gerar-futuras', async (req, res) => {
       }
     }
 
+    await sincronizarFinanceiro();
     res.json({ message: `${mensalidadesCriadas.length} mensalidades futuras geradas.`, mensalidadesCriadas });
   } catch (error) {
     res.status(500).json({ error: error.message });

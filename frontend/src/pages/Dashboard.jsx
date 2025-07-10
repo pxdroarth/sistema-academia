@@ -8,8 +8,17 @@ export default function Dashboard() {
   const [acessos, setAcessos] = useState([]);
   const [erro, setErro] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
-
   const navigate = useNavigate();
+
+  const resultadoTexto = {
+    liberado: "✅ Liberado",
+    bloqueado: "❌ Bloqueado",
+  };
+
+  const resultadoClasse = {
+    liberado: "text-green-600",
+    bloqueado: "text-red-600",
+  };
 
   useEffect(() => {
     carregarDados();
@@ -33,6 +42,7 @@ export default function Dashboard() {
       const acessosOrdenados = acessosComNome.sort(
         (a, b) => new Date(b.data_hora) - new Date(a.data_hora)
       );
+
       setAcessos(acessosOrdenados);
     } catch (error) {
       setErro("Erro ao carregar dados do dashboard.");
@@ -40,15 +50,13 @@ export default function Dashboard() {
     }
   }
 
-  // Função para navegar para a lista de alunos
   function handleIrParaAlunos() {
-    navigate("/alunos"); // ajuste a rota conforme a sua configuração
+    navigate("/alunos");
   }
 
   const totalAlunos = alunos.length;
   const alunosAtivos = alunos.filter((a) => a.status === "ativo").length;
   const alunosInativos = alunos.filter((a) => a.status !== "ativo").length;
-
   const ultimosAcessos = acessos.slice(0, 20);
 
   return (
@@ -104,38 +112,35 @@ export default function Dashboard() {
                 </tr>
               ) : (
                 ultimosAcessos.map(({ id, nome, data_hora, resultado }) => {
-                  const status = resultado?.toLowerCase();
-                  const isValidStatus =
-                    status === "liberado" || status === "bloqueado";
-                  const showWarning = !isValidStatus;
+                  const status = resultado?.toLowerCase().trim();
+                  const texto = resultadoTexto[status] || resultado;
+                  const classe = resultadoClasse[status] || "text-yellow-600";
 
                   return (
                     <tr
                       key={`${id}-${data_hora}`}
                       className="border-t hover:bg-gray-50"
-                      title={showWarning ? `Valor inesperado: "${resultado}"` : ""}
                     >
                       <td className="p-3 border">{nome}</td>
                       <td className="p-3 border">
                         {new Date(data_hora).toLocaleString("pt-BR")}
                       </td>
                       <td
-                        className={`p-3 border font-semibold ${
-                          status === "liberado"
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {status === "liberado" ? "✅ Liberado" : "❌ Bloqueado"}
-                        {showWarning && (
-                          <span
-                            className="ml-2 text-yellow-500 font-normal"
-                            title="Valor inesperado"
-                          >
-                            ⚠️
-                          </span>
-                        )}
-                      </td>
+  className={`p-3 border font-semibold ${
+    status === "permitido"
+      ? "text-green-600"
+      : status === "negado"
+      ? "text-red-600"
+      : "text-yellow-600"
+  }`}
+>
+  {status === "permitido"
+    ? "✅ Permitido"
+    : status === "negado"
+    ? "❌ Negado"
+    : resultado}
+</td>
+
                     </tr>
                   );
                 })

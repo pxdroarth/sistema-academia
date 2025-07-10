@@ -1,168 +1,126 @@
 import React, { useEffect, useState } from 'react';
-import { getDashboardKPIs } from '../../services/dashboardService';
-import { TrendingUp, TrendingDown } from 'lucide-react';
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Legend
-} from 'recharts';
+import axios from 'axios';
 
 export default function FinanceiroDashboard() {
-  const [kpis, setKpis] = useState({
-    despesas_top5: [],
-    receitas_categoria: []
-  });
-  const [erro, setErro] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [periodo, setPeriodo] = useState('mensal');
+  const [dados, setDados] = useState(null);
+  const [periodo, setPeriodo] = useState("mes_atual");
+  const [intervaloDatas, setIntervaloDatas] = useState({ inicio: "", fim: "" });
+  const [erro, setErro] = useState(false);
 
   useEffect(() => {
-    carregarKPIs(periodo);
-  }, [periodo]);
-
-  async function carregarKPIs(periodoSelecionado) {
-    setLoading(true);
-    setErro(null);
-    try {
-      const dados = await getDashboardKPIs({ periodo: periodoSelecionado });
-      setKpis({
-        ...dados,
-        despesas_top5: dados.despesas_top5 || [],
-        receitas_categoria: dados.receitas_categoria || []
-      });
-    } catch (err) {
-      setErro('Falha ao carregar dashboard.');
-    } finally {
-      setLoading(false);
+    if (periodo !== "intervalo_datas" || (intervaloDatas.inicio && intervaloDatas.fim)) {
+      carregarKPIs();
     }
-  }
+    // eslint-disable-next-line
+  }, [periodo, intervaloDatas]);
 
-  const formatoReal = (valor) =>
-    valor?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00';
+  const carregarKPIs = async () => {
+    try {
+      let url = `http://localhost:3001/dashboard/financeiro/kpis?periodo=${periodo}`;
+      if (periodo === "intervalo_datas" && intervaloDatas.inicio && intervaloDatas.fim) {
+        url += `&data_inicio=${intervaloDatas.inicio}&data_fim=${intervaloDatas.fim}`;
+      }
+      const response = await axios.get(url);
+      setDados(response.data);
+      setErro(false);
+    } catch (error) {
+      setErro(true);
+    }
+  };
 
-  const periodos = ['diario', 'semanal', 'mensal'];
+  const periodos = [
+    { key: "diario", label: "Diário" },
+    { key: "semanal", label: "Semanal" },
+    { key: "mensal", label: "Mensal" },
+    { key: "trimestre", label: "Trimestre" },
+    { key: "semestre", label: "Semestre" },
+    { key: "anual", label: "Anual" },
+    { key: "intervalo_datas", label: "Intervalo de Datas" },
+  ];
+
+  const formatarValor = (valor) =>
+    valor?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) || "R$ 0,00";
 
   return (
-    <div className="p-6 space-y-6">
-      <h2 className="text-2xl font-semibold">Dashboard Financeiro</h2>
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-4">Dashboard Financeiro</h2>
 
-      {/* Botões de filtro período */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-6">
         {periodos.map((p) => (
           <button
-            key={p}
+            key={p.key}
             className={`px-4 py-2 rounded ${
-              periodo === p ? 'bg-blue-600 text-white' : 'bg-gray-200'
+              periodo === p.key ? "bg-blue-600 text-white" : "bg-gray-100"
             }`}
-            onClick={() => setPeriodo(p)}
+            onClick={() => {
+              setPeriodo(p.key);
+              setIntervaloDatas({ inicio: "", fim: "" });
+            }}
           >
-            {p.charAt(0).toUpperCase() + p.slice(1)}
+            {p.label}
           </button>
         ))}
       </div>
 
-      {loading && <div className="text-center">Carregando...</div>}
-      {erro && <div className="text-center text-red-600">{erro}</div>}
-
-      {!loading && !erro && (
-        <>
-          {/* KPIs principais */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <CardKPI titulo="Receita Real" valor={formatoReal(kpis.receita_real)} cor="green" />
-            <CardKPI titulo="Despesas Pagas" valor={formatoReal(kpis.despesas_pagas)} cor="red" />
-            <CardKPI
-              titulo="Lucro Real"
-              valor={formatoReal(kpis.lucro_real)}
-              cor={kpis.lucro_real >= 0 ? 'green' : 'red'}
+      {periodo === "intervalo_datas" && (
+        <div className="flex items-center gap-2 mb-4">
+          <label>
+            Data Inicial:
+            <input
+              type="date"
+              className="ml-2 px-2 py-1 border rounded"
+              value={intervaloDatas.inicio}
+              onChange={e => setIntervaloDatas(d => ({ ...d, inicio: e.target.value }))}
             />
-          </div>
+          </label>
+          <label>
+            Data Final:
+            <input
+              type="date"
+              className="ml-2 px-2 py-1 border rounded"
+              value={intervaloDatas.fim}
+              onChange={e => setIntervaloDatas(d => ({ ...d, fim: e.target.value }))}
+            />
+          </label>
+          <button
+            className="ml-4 bg-blue-600 text-white px-3 py-1 rounded"
+            onClick={carregarKPIs}
+            disabled={!intervaloDatas.inicio || !intervaloDatas.fim}
+          >
+            Filtrar
+          </button>
+        </div>
+      )}
 
-          {/* KPIs adicionais */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <CardKPI titulo="Saldo Atual" valor={formatoReal(kpis.saldo_atual)} />
-            <CardKPI titulo="Receitas a Receber" valor={formatoReal(kpis.a_receber)} />
-            <CardKPI titulo="Despesas a Pagar" valor={formatoReal(kpis.a_pagar)} />
-          </div>
+      {erro && (
+        <div className="text-red-600 font-semibold mb-4">
+          Falha ao carregar dashboard.
+        </div>
+      )}
 
-          {/* Clientes e Variação mensal */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <CardKPI titulo="Clientes Pendentes" valor={kpis.clientes_pendentes} />
-            <CardKPI
-              titulo="Variação Receita Mensal"
-              valor={`${kpis.variacao_receita_mensal?.toFixed(2)}%`}
-            >
-              {kpis.variacao_receita_mensal >= 0 ? (
-                <TrendingUp className="text-green-500" />
-              ) : (
-                <TrendingDown className="text-red-500" />
-              )}
-            </CardKPI>
-          </div>
-
-          {/* Gráficos */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card titulo="Despesas por Categoria (Top 5)">
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={kpis.despesas_top5}
-                    dataKey="total"
-                    nameKey="categoria"
-                    label
-                  >
-                    {kpis.despesas_top5.map((_, idx) => (
-                      <Cell
-                        key={idx}
-                        fill={`hsl(${idx * 72}, 70%, 50%)`}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </Card>
-
-            <Card titulo="Receitas por Categoria">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={kpis.receitas_categoria}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="categoria" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="total" fill="#8884d8" />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-          </div>
-        </>
+      {dados && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+          <Card titulo="Mensalidades Recebidas" valor={formatarValor(dados.mensalidades_recebidas)} cor="text-green-700" />
+          <Card titulo="Vendas Recebidas" valor={formatarValor(dados.vendas_recebidas)} cor="text-blue-600" />
+          <Card titulo="Receita Real Total" valor={formatarValor((dados.mensalidades_recebidas || 0) + (dados.vendas_recebidas || 0))} cor="text-green-700" />
+          <Card titulo="Despesas Pagas" valor={formatarValor(dados.despesas_pagas)} cor="text-red-600" />
+          <Card titulo="Lucro Real" valor={formatarValor(dados.lucro_real)} cor="text-green-700" />
+          <Card titulo="Saldo Atual" valor={formatarValor(dados.saldo_atual)} />
+          <Card titulo="Receitas a Receber" valor={formatarValor(dados.a_receber)} />
+          <Card titulo="Despesas a Pagar" valor={formatarValor(dados.despesas_a_pagar)} />
+          <Card titulo="Clientes Pendentes" valor={dados.clientes_pendentes} />
+          <Card titulo="Variação Receita Mensal" valor="0.00%" />
+        </div>
       )}
     </div>
   );
 }
 
-// Componentes auxiliares
-const CardKPI = ({ titulo, valor, cor = 'black', children }) => (
-  <div className="shadow-sm bg-white rounded p-4">
-    <p className="text-gray-500">{titulo}</p>
-    <div className="flex items-center gap-2">
-      <span className={`text-2xl font-bold text-${cor}-500`}>{valor}</span>
-      {children}
+function Card({ titulo, valor, cor }) {
+  return (
+    <div className="bg-white p-4 rounded shadow text-center">
+      <div className="text-gray-500">{titulo}</div>
+      <div className={`text-lg font-bold ${cor ?? "text-black"}`}>{valor}</div>
     </div>
-  </div>
-);
-
-const Card = ({ titulo, children }) => (
-  <div className="shadow-sm bg-white rounded p-4">
-    <h3 className="text-lg font-semibold mb-2">{titulo}</h3>
-    {children}
-  </div>
-);
+  );
+}

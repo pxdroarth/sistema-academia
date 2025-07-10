@@ -1,11 +1,11 @@
-const express = require('express');
+const express = require('express'); 
 const router = express.Router();
 const { runQuery, runGet, runExecute } = require('../dbHelper');
 
 // Listar todos os acessos
 router.get('/', async (req, res) => {
   try {
-    const rows = await runQuery('SELECT * FROM acesso');
+    const rows = await runQuery('SELECT * FROM acesso ORDER BY data_hora DESC');
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -28,7 +28,7 @@ router.get('/:id', async (req, res) => {
 router.get('/aluno/:alunoId', async (req, res) => {
   const alunoId = parseInt(req.params.alunoId);
   try {
-    const rows = await runQuery('SELECT * FROM acesso WHERE aluno_id = ?', [alunoId]);
+    const rows = await runQuery('SELECT * FROM acesso WHERE aluno_id = ? ORDER BY data_hora DESC', [alunoId]);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -43,8 +43,10 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Campos obrigatórios: aluno_id e resultado' });
   }
 
-  const resultadoValido = ['liberado', 'bloqueado'];
-  if (!resultadoValido.includes(resultado.toLowerCase())) {
+  const resultadoValido = ['permitido', 'negado'];
+  const resultadoNormalizado = resultado.toLowerCase();
+
+  if (!resultadoValido.includes(resultadoNormalizado)) {
     return res.status(400).json({ error: `Resultado inválido. Valores válidos: ${resultadoValido.join(', ')}` });
   }
 
@@ -53,14 +55,14 @@ router.post('/', async (req, res) => {
   try {
     const result = await runExecute(
       'INSERT INTO acesso (aluno_id, data_hora, resultado, motivo_bloqueio) VALUES (?, ?, ?, ?)',
-      [aluno_id, dataHoraParaInserir, resultado.toLowerCase(), motivo_bloqueio || null]
+      [aluno_id, dataHoraParaInserir, resultadoNormalizado, motivo_bloqueio || null]
     );
 
     res.status(201).json({
       id: result.id,
       aluno_id,
       data_hora: dataHoraParaInserir,
-      resultado: resultado.toLowerCase(),
+      resultado: resultadoNormalizado,
       motivo_bloqueio: motivo_bloqueio || null,
     });
   } catch (error) {
@@ -73,22 +75,24 @@ router.put('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   const { aluno_id, data_hora, resultado, motivo_bloqueio } = req.body;
 
-  const resultadoValido = ['liberado', 'bloqueado'];
-  if (!resultadoValido.includes(resultado.toLowerCase())) {
+  const resultadoValido = ['permitido', 'negado'];
+  const resultadoNormalizado = resultado.toLowerCase();
+
+  if (!resultadoValido.includes(resultadoNormalizado)) {
     return res.status(400).json({ error: `Resultado inválido. Valores válidos: ${resultadoValido.join(', ')}` });
   }
 
   try {
     const result = await runExecute(
       'UPDATE acesso SET aluno_id = ?, data_hora = ?, resultado = ?, motivo_bloqueio = ? WHERE id = ?',
-      [aluno_id, data_hora, resultado.toLowerCase(), motivo_bloqueio || null, id]
+      [aluno_id, data_hora, resultadoNormalizado, motivo_bloqueio || null, id]
     );
 
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Acesso não encontrado para atualizar' });
     }
 
-    res.json({ id, aluno_id, data_hora, resultado: resultado.toLowerCase(), motivo_bloqueio });
+    res.json({ id, aluno_id, data_hora, resultado: resultadoNormalizado, motivo_bloqueio });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

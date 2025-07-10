@@ -14,7 +14,7 @@ export default function FinanceiroLayout() {
       {/* Navegação interna do módulo */}
       <div className="flex gap-3 mb-6">
         <Link
-          to="dashboard"
+          to="dashboardFinanceiro"
           className={`px-4 py-2 rounded font-medium ${isActive("dashboard")}`}
         >
           Dashboard

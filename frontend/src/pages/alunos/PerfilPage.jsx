@@ -17,7 +17,16 @@ export default function PerfilPage() {
   const [emDebito, setEmDebito] = useState(false);
   const navigate = useNavigate();
 
-  // Buscar dados do aluno
+  const resultadoTexto = {
+    liberado: "Permitido",
+    bloqueado: "Negado",
+  };
+
+  const resultadoClasse = {
+    liberado: "text-green-700",
+    bloqueado: "text-red-600",
+  };
+
   useEffect(() => {
     async function fetchAluno() {
       try {
@@ -32,30 +41,26 @@ export default function PerfilPage() {
     fetchAluno();
   }, [id]);
 
-  // Recarregar mensalidades e verificar débito ao mudar id ou página
   useEffect(() => {
-  recarregarMensalidades(pagina);
-  verificarDebito();
-}, [id, pagina]);
+    recarregarMensalidades(pagina);
+    verificarDebito();
+  }, [id, pagina]);
 
-  // Função para buscar mensalidades paginadas e atualizar estado
   async function recarregarMensalidades(paginaAtual = 1) {
-    console.log("Buscando mensalidades página:", paginaAtual);
-  try {
-    const res = await fetch(`http://localhost:3001/mensalidades/aluno/${id}?status=todos&pagina=${paginaAtual}&limite=10`);
-    if (!res.ok) throw new Error("Erro ao buscar mensalidades");
-    const data = await res.json();
-
-    setMensalidades(data.mensalidades);
-    setTotalMensalidades(data.total);
-    setPagina(paginaAtual);  // Atualiza o estado com a página usada na busca
-  } catch (err) {
-    setErro(err.message);
+    try {
+      const res = await fetch(
+        `http://localhost:3001/mensalidades/aluno/${id}?status=todos&pagina=${paginaAtual}&limite=10`
+      );
+      if (!res.ok) throw new Error("Erro ao buscar mensalidades");
+      const data = await res.json();
+      setMensalidades(data.mensalidades);
+      setTotalMensalidades(data.total);
+      setPagina(paginaAtual);
+    } catch (err) {
+      setErro(err.message);
+    }
   }
-}
 
-
-  // Verificar se o aluno está em débito
   async function verificarDebito() {
     try {
       const res = await fetch(`http://localhost:3001/alunos/${id}/debito`);
@@ -67,7 +72,6 @@ export default function PerfilPage() {
     }
   }
 
-  // Buscar histórico de acessos
   useEffect(() => {
     async function fetchAcessos() {
       try {
@@ -82,7 +86,6 @@ export default function PerfilPage() {
     fetchAcessos();
   }, [id]);
 
-  // Atualizar vencimento de uma mensalidade
   async function atualizarVencimento(mensalidadeId, novoVencimento) {
     try {
       await fetch(
@@ -100,14 +103,11 @@ export default function PerfilPage() {
     }
   }
 
-  // Confirmar pagamento de uma mensalidade
   async function confirmarPagamento(mensalidadeId) {
     try {
       const res = await fetch(
         `http://localhost:3001/mensalidades/${mensalidadeId}/pagar`,
-        {
-          method: "PUT",
-        }
+        { method: "PUT" }
       );
       if (!res.ok) throw new Error("Erro ao confirmar pagamento");
       setToastMsg("Mensalidade marcada como paga!");
@@ -134,14 +134,12 @@ export default function PerfilPage() {
 
       {emDebito && (
         <div className="mb-4 p-4 bg-red-100 text-red-700 border border-red-400 rounded">
-          <strong>Aluno em débito!</strong> Existem mensalidades vencidas e não
-          pagas.
+          <strong>Aluno em débito!</strong> Existem mensalidades vencidas e não pagas.
         </div>
       )}
 
       <ToastNotification message={toastMsg} onClose={() => setToastMsg(null)} />
 
-      {/* Menu abas */}
       <div className="flex space-x-6 border-b mb-4">
         <button
           onClick={() => setAbaAtiva("informacoes")}
@@ -188,19 +186,10 @@ export default function PerfilPage() {
       {abaAtiva === "informacoes" && (
         <div>
           <h3 className="font-semibold mb-2">Informações do Aluno</h3>
-          <p>
-            <strong>Nome:</strong> {aluno.nome}
-          </p>
-          <p>
-            <strong>CPF:</strong> {aluno.cpf}
-          </p>
-          <p>
-            <strong>Email:</strong> {aluno.email}
-          </p>
-          <p>
-            <strong>Status:</strong> {aluno.status}
-          </p>
-
+          <p><strong>Nome:</strong> {aluno.nome}</p>
+          <p><strong>CPF:</strong> {aluno.cpf}</p>
+          <p><strong>Email:</strong> {aluno.email}</p>
+          <p><strong>Status:</strong> {aluno.status}</p>
           <button
             onClick={() => navigate(`/alunos/editar/${aluno.id}`)}
             className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded"
@@ -213,8 +202,7 @@ export default function PerfilPage() {
       {abaAtiva === "mensalidades" && (
         <div>
           <h3 className="font-semibold mb-2">
-            Mensalidades (página {pagina} de{" "}
-            {Math.max(1, Math.ceil(totalMensalidades / 10))})
+            Mensalidades (página {pagina} de {Math.max(1, Math.ceil(totalMensalidades / 10))})
           </h3>
           {mensalidades.length === 0 ? (
             <p>Sem mensalidades registradas.</p>
@@ -279,20 +267,20 @@ export default function PerfilPage() {
               </table>
 
               <div className="flex justify-between mt-2">
-                  <button
-                    disabled={pagina <= 1}
-                    onClick={() => setPagina(pagina - 1)}
-                    className="bg-gray-300 px-3 py-1 rounded disabled:opacity-50"
-                  >
-                    Anterior
-                  </button>
-                  <button
-                    disabled={pagina >= Math.ceil(totalMensalidades / 10)}
-                    onClick={() => setPagina(pagina + 1)}
-                    className="bg-gray-300 px-3 py-1 rounded disabled:opacity-50"
-                  >
-                    Próximo
-                  </button>
+                <button
+                  disabled={pagina <= 1}
+                  onClick={() => setPagina(pagina - 1)}
+                  className="bg-gray-300 px-3 py-1 rounded disabled:opacity-50"
+                >
+                  Anterior
+                </button>
+                <button
+                  disabled={pagina >= Math.ceil(totalMensalidades / 10)}
+                  onClick={() => setPagina(pagina + 1)}
+                  className="bg-gray-300 px-3 py-1 rounded disabled:opacity-50"
+                >
+                  Próximo
+                </button>
               </div>
 
               {aluno && aluno.plano_id && (
@@ -330,14 +318,10 @@ export default function PerfilPage() {
                     </td>
                     <td
                       className={`p-2 border font-semibold ${
-                        a.resultado === "liberado"
-                          ? "text-green-700"
-                          : a.resultado === "bloqueado"
-                          ? "text-red-600"
-                          : ""
+                        resultadoClasse[a.resultado] || ""
                       }`}
                     >
-                      {a.resultado === "liberado" ? "Permitido" : "Negado"}
+                      {resultadoTexto[a.resultado] || a.resultado}
                     </td>
                   </tr>
                 ))}
