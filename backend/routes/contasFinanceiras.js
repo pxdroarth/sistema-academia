@@ -14,8 +14,9 @@ function validarCamposObrigatorios(body, campos) {
 router.get('/', async (req, res) => {
   const { tipo, status, data_inicial, data_final, descricao = "", page = 1, perPage = 10 } = req.query;
   const params = [];
-  let where = "WHERE 1=1";
-  
+  // FILTRA SÓ contas administrativas:
+  let where = "WHERE cf.origem = 'conta_financeira'";
+
   // Filtros
   if (tipo && tipo !== 'todos') {
     where += ' AND cf.tipo = ?';
@@ -81,10 +82,11 @@ router.post('/', async (req, res) => {
   if (erro) return res.status(400).json({ error: erro });
 
   try {
+    // Define a origem automaticamente como 'conta_financeira'
     const result = await runExecute(`
       INSERT INTO conta_financeira 
-      (descricao, tipo, valor, data_lancamento, status, plano_contas_id, observacao, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      (descricao, tipo, valor, data_lancamento, status, plano_contas_id, observacao, origem, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'conta_financeira', datetime('now'), datetime('now'))
     `, [descricao, tipo, valor, data_lancamento, status, plano_contas_id || null, observacao || null]);
     res.status(201).json({ id: result.id });
   } catch (e) {

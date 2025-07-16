@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchAlunos } from "../../services/Api";
 import { Link } from "react-router-dom";
-  
 
 export default function AlunosPage() {
   const [alunos, setAlunos] = useState([]);
@@ -24,6 +23,10 @@ export default function AlunosPage() {
     }
   }
 
+  const totalAlunos = alunos.length;
+  const totalEmDia = alunos.filter(a => a.mensalidade_status === "em_dia").length;
+  const totalAtrasados = alunos.filter(a => a.mensalidade_status !== "em_dia").length;
+
   const alunosFiltrados = alunos.filter(
     (a) =>
       a.nome.toLowerCase().includes(busca.toLowerCase()) ||
@@ -40,7 +43,7 @@ export default function AlunosPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 bg-white rounded shadow space-y-4">
+    <div className="max-w-7xl mx-auto p-6 bg-white rounded shadow space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-blue-700">Alunos</h2>
         <input
@@ -51,14 +54,32 @@ export default function AlunosPage() {
           className="border px-3 py-2 rounded"
         />
       </div>
-       <div className="flex justify-end mb-4">
-  <Link
-    to="/alunos/novo"
-    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
-  >
-    + Novo Aluno
-  </Link>
-</div>
+
+      {/* ✅ Contadores rápidos */}
+      <div className="flex gap-4 mt-4">
+        <div className="flex-1 p-4 bg-gray-100 rounded shadow text-center">
+          <p className="text-gray-600">Total de Alunos</p>
+          <p className="text-2xl font-bold">{totalAlunos}</p>
+        </div>
+        <div className="flex-1 p-4 bg-green-100 rounded shadow text-center">
+          <p className="text-gray-600">Em Dia</p>
+          <p className="text-2xl font-bold text-green-700">{totalEmDia}</p>
+        </div>
+        <div className="flex-1 p-4 bg-red-100 rounded shadow text-center">
+          <p className="text-gray-600">Atrasados</p>
+          <p className="text-2xl font-bold text-red-700">{totalAtrasados}</p>
+        </div>
+      </div>
+
+      <div className="flex justify-end mb-4">
+        <Link
+          to="/alunos/novo"
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+        >
+          + Novo Aluno
+        </Link>
+      </div>
+
       <table className="min-w-full border mt-4">
         <thead className="bg-gray-200">
           <tr>
@@ -89,10 +110,10 @@ export default function AlunosPage() {
                   )}
                 </td>
                 <td className="p-2 border">
-                  {aluno.pendente ? (
-                    <span className="text-red-600 font-bold">🔴 Pendente</span>
-                  ) : (
+                  {aluno.mensalidade_status === "em_dia" ? (
                     <span className="text-green-600 font-bold">🟢 Em dia</span>
+                  ) : (
+                    <span className="text-red-600 font-bold">🔴 Atrasado</span>
                   )}
                 </td>
                 <td className="p-2 border">

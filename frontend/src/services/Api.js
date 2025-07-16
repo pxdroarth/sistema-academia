@@ -34,11 +34,15 @@ export async function updateAluno(id, dadosAluno) {
   return await response.json();
 }
 
-// ============ MENSALIDADES ============
+// ============ MENSALIDADES (cadastro) ============
 
-export async function fetchMensalidades(alunoId) {
-  const response = await fetch(`${API_BASE_URL}/mensalidades/aluno/${alunoId}`);
-  if (!response.ok) throw new Error("Erro ao buscar mensalidades");
+export async function cadastrarMensalidade(dados) {
+  const response = await fetch(`${API_BASE_URL}/mensalidades`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados),
+  });
+  if (!response.ok) throw new Error("Erro ao cadastrar mensalidade");
   return await response.json();
 }
 

@@ -1,279 +1,270 @@
 const express = require('express');
 const router = express.Router();
-const { runQuery, runGet, runExecute } = require('../dbHelper');
-const { sincronizarFinanceiro } = require('../services/FinanceService');
+const { runGet, runExecute, runQuery } = require('../dbHelper');
 
-// 🔹 Listar todas as mensalidades
+// POST /mensalidades — Cria mensalidade SÓ quando paga (não gera débito retroativo)
+router.post('/', async (req, res) => {
+  try {
+    const {
+      aluno_id,
+      plano_id,
+      valor_cobrado,
+      desconto_aplicado = 0,
+      data_inicio,
+      vencimento,
+      observacoes = ''
+    } = req.body;
+
+    if (!aluno_id || !plano_id || !valor_cobrado) {
+      return res.status(400).json({ error: 'Campos obrigatórios faltando' });
+    }
+
+    const plano = await runGet('SELECT * FROM plano WHERE id = ?', [plano_id]);
+    if (!plano) return res.status(400).json({ error: 'Plano não encontrado' });
+
+    const dataInicio = data_inicio || new Date().toISOString().slice(0, 10);
+    let dataFim;
+    if (plano.periodo_tipo === 'dias') {
+      const di = new Date(dataInicio);
+      di.setDate(di.getDate() + Number(plano.periodo_quantidade));
+      dataFim = di.toISOString().slice(0, 10);
+    } else if (plano.periodo_tipo === 'meses') {
+      const di = new Date(dataInicio);
+      di.setMonth(di.getMonth() + Number(plano.periodo_quantidade));
+      dataFim = di.toISOString().slice(0, 10);
+    } else {
+      dataFim = dataInicio;
+    }
+
+    let venc = vencimento;
+    if (!venc) {
+      const aluno = await runGet('SELECT dia_vencimento FROM aluno WHERE id = ?', [aluno_id]);
+      if (aluno?.dia_vencimento) {
+        const hoje = new Date(dataInicio);
+        let mes = hoje.getMonth();
+        let ano = hoje.getFullYear();
+        if (hoje.getDate() > aluno.dia_vencimento) {
+          mes += 1;
+          if (mes > 11) { mes = 0; ano++; }
+        }
+        venc = new Date(ano, mes, aluno.dia_vencimento).toISOString().slice(0, 10);
+      } else {
+        venc = dataInicio;
+      }
+    }
+
+    const result = await runExecute(
+      `INSERT INTO mensalidade 
+        (aluno_id, plano_id, valor_cobrado, desconto_aplicado, status, data_inicio, data_fim, vencimento, observacoes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [aluno_id, plano_id, valor_cobrado, desconto_aplicado, 'pago', dataInicio, dataFim, venc, observacoes]
+    );
+
+    if (vencimento) {
+      await runExecute(
+        'UPDATE aluno SET dia_vencimento = ? WHERE id = ?',
+        [Number(vencimento.split('-')[2]), aluno_id]
+      );
+    }
+
+    res.status(201).json({
+      id: result.id,
+      aluno_id,
+      plano_id,
+      valor_cobrado,
+      desconto_aplicado,
+      status: 'pago',
+      data_inicio: dataInicio,
+      data_fim: dataFim,
+      vencimento: venc,
+      observacoes
+    });
+  } catch (error) {
+    console.error('[ERRO POST mensalidades]', error);
+    res.status(500).json({ error: 'Erro ao criar mensalidade' });
+  }
+});
+
+// GET /mensalidades?filtros...
 router.get('/', async (req, res) => {
   try {
-    const rows = await runQuery('SELECT * FROM mensalidade');
+    let sql = 'SELECT * FROM mensalidade WHERE 1=1';
+    const params = [];
+
+    if (req.query.aluno_id) {
+      sql += ' AND aluno_id = ?';
+      params.push(req.query.aluno_id);
+    }
+    if (req.query.plano_id) {
+      sql += ' AND plano_id = ?';
+      params.push(req.query.plano_id);
+    }
+    if (req.query.status) {
+      sql += ' AND status = ?';
+      params.push(req.query.status);
+    }
+    if (req.query.data_inicio_de) {
+      sql += ' AND data_inicio >= ?';
+      params.push(req.query.data_inicio_de);
+    }
+    if (req.query.data_inicio_ate) {
+      sql += ' AND data_inicio <= ?';
+      params.push(req.query.data_inicio_ate);
+    }
+    if (req.query.data_fim_de) {
+      sql += ' AND data_fim >= ?';
+      params.push(req.query.data_fim_de);
+    }
+    if (req.query.data_fim_ate) {
+      sql += ' AND data_fim <= ?';
+      params.push(req.query.data_fim_ate);
+    }
+    if (req.query.vencimento_de) {
+      sql += ' AND vencimento >= ?';
+      params.push(req.query.vencimento_de);
+    }
+    if (req.query.vencimento_ate) {
+      sql += ' AND vencimento <= ?';
+      params.push(req.query.vencimento_ate);
+    }
+
+    sql += ' ORDER BY data_inicio DESC';
+    const rows = await runQuery(sql, params);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// 🔹 Listar mensalidades por aluno com filtros
+// GET /mensalidades/aluno/:alunoId
 router.get('/aluno/:alunoId', async (req, res) => {
   const alunoId = parseInt(req.params.alunoId);
-  const status = req.query.status || 'todos';
-  const pagina = parseInt(req.query.pagina) || 1;
-  const limite = parseInt(req.query.limite) || 10;
-  const offset = (pagina - 1) * limite;
-
   try {
-    let query = 'SELECT * FROM mensalidade WHERE aluno_id = ?';
-    const params = [alunoId];
-
-    if (status !== 'todos') {
-      query += ' AND status = ?';
-      params.push(status);
-    }
-
-    query += ' ORDER BY vencimento DESC LIMIT ? OFFSET ?';
-    params.push(limite, offset);
-
-    const mensalidades = await runQuery(query, params);
-
-    const totalRow = await runGet(
-      `SELECT COUNT(*) AS total FROM mensalidade WHERE aluno_id = ?${status !== 'todos' ? ' AND status = ?' : ''}`,
-      status !== 'todos' ? [alunoId, status] : [alunoId]
+    const rows = await runQuery(
+      `SELECT * FROM mensalidade WHERE aluno_id = ? ORDER BY data_inicio DESC`,
+      [alunoId]
     );
-
     res.json({
-      mensalidades,
-      total: totalRow.total,
-      pagina,
-      totalPaginas: Math.ceil(totalRow.total / limite),
+      mensalidades: rows,
+      total: rows.length
     });
   } catch (error) {
+    console.error('[ERRO GET mensalidades/aluno/:alunoId]', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// 🔹 Buscar uma mensalidade por ID
-router.get('/:id', async (req, res) => {
-  const id = parseInt(req.params.id);
-  try {
-    const row = await runGet('SELECT * FROM mensalidade WHERE id = ?', [id]);
-    if (!row) return res.status(404).json({ error: 'Mensalidade não encontrada' });
-    res.json(row);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 🔹 Criar nova mensalidade
-router.post('/', async (req, res) => {
-  const { aluno_id, vencimento, valor_cobrado, desconto_aplicado = 0, status = 'em_aberto' } = req.body;
-
-  if (!aluno_id || !vencimento || !valor_cobrado) {
-    return res.status(400).json({ error: 'Campos obrigatórios faltando' });
-  }
-
-  try {
-    const result = await runExecute(
-      'INSERT INTO mensalidade (aluno_id, vencimento, valor_cobrado, desconto_aplicado, status) VALUES (?, ?, ?, ?, ?)',
-      [aluno_id, vencimento, valor_cobrado, desconto_aplicado, status]
-    );
-    await sincronizarFinanceiro();
-    res.status(201).json({ id: result.id, aluno_id, vencimento, valor_cobrado, desconto_aplicado, status });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 🔹 Atualizar mensalidade
+// PUT /mensalidades/:id
 router.put('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  const { aluno_id, vencimento, valor_cobrado, desconto_aplicado = 0, status } = req.body;
-
+  const { valor_cobrado, desconto_aplicado, data_inicio, data_fim, vencimento, observacoes } = req.body;
   try {
     const result = await runExecute(
-      'UPDATE mensalidade SET aluno_id = ?, vencimento = ?, valor_cobrado = ?, desconto_aplicado = ?, status = ? WHERE id = ?',
-      [aluno_id, vencimento, valor_cobrado, desconto_aplicado, status, id]
+      'UPDATE mensalidade SET valor_cobrado = ?, desconto_aplicado = ?, data_inicio = ?, data_fim = ?, vencimento = ?, observacoes = ? WHERE id = ?',
+      [valor_cobrado, desconto_aplicado, data_inicio, data_fim, vencimento, observacoes, id]
     );
-
-    if (result.changes === 0) {
-      return res.status(404).json({ error: 'Mensalidade não encontrada para atualizar' });
-    }
-    await sincronizarFinanceiro();
-    res.json({ id, aluno_id, vencimento, valor_cobrado, desconto_aplicado, status });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 🔹 Atualizar status
-router.patch('/:id/status', async (req, res) => {
-  const id = parseInt(req.params.id);
-  const { status } = req.body;
-
-  if (!status) return res.status(400).json({ error: 'Status é obrigatório' });
-
-  try {
-    const result = await runExecute('UPDATE mensalidade SET status = ? WHERE id = ?', [status, id]);
     if (result.changes === 0) return res.status(404).json({ error: 'Mensalidade não encontrada' });
-    await sincronizarFinanceiro();
-    res.json({ id, status });
+    res.json({ message: 'Mensalidade atualizada com sucesso' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// 🔹 Confirmar pagamento e registrar na tabela pagamento
-router.put('/:id/pagar', async (req, res) => {
-  const id = parseInt(req.params.id);
-
-  try {
-    // Verifica se a mensalidade existe
-    const mensalidade = await runGet('SELECT * FROM mensalidade WHERE id = ?', [id]);
-    if (!mensalidade) return res.status(404).json({ error: 'Mensalidade não encontrada' });
-
-    const hoje = new Date().toISOString().split('T')[0];
-    const valor = mensalidade.valor_cobrado;
-
-    // Atualiza status da mensalidade
-    await runExecute('UPDATE mensalidade SET status = ? WHERE id = ?', ['pago', id]);
-
-    // Registra o pagamento
-    await runExecute(
-      `INSERT INTO pagamento (mensalidade_id, data_pagamento, valor_pago, valor_previsto)
-       VALUES (?, ?, ?, ?)`,
-      [id, hoje, valor, valor]
-    );
-
-    await sincronizarFinanceiro();
-    res.json({ message: 'Mensalidade paga e registrada com sucesso!' });
-  } catch (error) {
-    console.error('Erro ao pagar mensalidade:', error);
-    res.status(500).json({ error: 'Erro ao pagar mensalidade' });
-  }
-});
-
-// 🔹 Atualizar vencimento manualmente
-router.put('/:id/vencimento', async (req, res) => {
-  const id = parseInt(req.params.id);
-  const { novoVencimento } = req.body;
-
-  if (!novoVencimento) {
-    return res.status(400).json({ error: 'Data de vencimento é obrigatória' });
-  }
-
-  try {
-    await runExecute('UPDATE mensalidade SET vencimento = ? WHERE id = ?', [novoVencimento, id]);
-    await sincronizarFinanceiro();
-    res.json({ message: 'Vencimento atualizado com sucesso' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 🔹 Pagamento antecipado múltiplo com desconto
-router.post('/pagamento-antecipado', async (req, res) => {
-  const { mensalidadesIds, desconto = 0 } = req.body;
-
-  if (!Array.isArray(mensalidadesIds) || mensalidadesIds.length === 0) {
-    return res.status(400).json({ error: 'Ids das mensalidades são obrigatórios' });
-  }
-
-  try {
-    const resultados = [];
-
-    for (const id of mensalidadesIds) {
-      const row = await runGet('SELECT * FROM mensalidade WHERE id = ?', [id]);
-      if (!row) return res.status(404).json({ error: `Mensalidade ${id} não encontrada` });
-
-      const valorComDesconto = row.valor_cobrado * (1 - desconto / 100);
-
-      await runExecute(
-        'UPDATE mensalidade SET valor_cobrado = ?, desconto_aplicado = ?, status = ? WHERE id = ?',
-        [valorComDesconto, desconto, 'pago', id]
-      );
-
-      resultados.push({ id, valor_cobrado: valorComDesconto });
-    }
-
-    await sincronizarFinanceiro();
-    res.json({ message: 'Pagamento antecipado registrado com sucesso', mensalidades: resultados });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 🔹 Deletar mensalidade
+// DELETE /mensalidades/:id
 router.delete('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   try {
     const result = await runExecute('DELETE FROM mensalidade WHERE id = ?', [id]);
-    if (result.changes === 0) {
-      return res.status(404).json({ error: 'Mensalidade não encontrada para deletar' });
-    }
-    await sincronizarFinanceiro();
+    if (result.changes === 0) return res.status(404).json({ error: 'Mensalidade não encontrada para deletar' });
     res.json({ message: 'Mensalidade deletada com sucesso' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// 🔹 Gerar mensalidades futuras
-router.post('/gerar-futuras', async (req, res) => {
-  const { alunoId, planoId, meses } = req.body;
-
-  if (!alunoId || !planoId || !meses || meses <= 0) {
-    return res.status(400).json({ error: 'Parâmetros inválidos' });
-  }
-
+// GET /mensalidades/vigentes
+router.get('/vigentes', async (req, res) => {
   try {
-    const ultimas = await runQuery(
-      'SELECT vencimento FROM mensalidade WHERE aluno_id = ? ORDER BY vencimento DESC LIMIT 1',
-      [alunoId]
-    );
+    const hoje = new Date().toISOString().slice(0, 10);
+    const rows = await runQuery(`
+      SELECT * FROM mensalidade
+      WHERE status = 'pago' AND data_inicio <= ? AND data_fim >= ?
+      ORDER BY data_fim DESC
+    `, [hoje, hoje]);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-    let diaVencimento;
-
-    if (ultimas.length > 0) {
-      diaVencimento = new Date(ultimas[0].vencimento).getDate();
-    } else {
-      const aluno = await runGet('SELECT dia_vencimento FROM aluno WHERE id = ?', [alunoId]);
-      if (!aluno) return res.status(404).json({ error: 'Aluno não encontrado' });
-      diaVencimento = aluno.dia_vencimento || 1;
-    }
-
-    const plano = await runGet('SELECT valor_base FROM plano WHERE id = ?', [planoId]);
-    if (!plano) return res.status(404).json({ error: 'Plano não encontrado' });
-
-    const valorBase = plano.valor_base;
-    const mensalidadesCriadas = [];
+// GET /mensalidades/a-vencer?dias=7
+router.get('/a-vencer', async (req, res) => {
+  try {
+    const dias = parseInt(req.query.dias) || 7;
     const hoje = new Date();
+    const fim = new Date();
+    fim.setDate(hoje.getDate() + dias);
+    const rows = await runQuery(`
+      SELECT * FROM mensalidade
+      WHERE status = 'pago' AND data_fim > ? AND data_fim <= ?
+      ORDER BY data_fim ASC
+    `, [hoje.toISOString().slice(0, 10), fim.toISOString().slice(0, 10)]);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-    let dataInicial = ultimas.length > 0
-      ? new Date(new Date(ultimas[0].vencimento).setMonth(new Date(ultimas[0].vencimento).getMonth() + 1))
-      : new Date(hoje.getFullYear(), hoje.getMonth(), diaVencimento);
+// GET /mensalidades/receita?data_de=...&data_ate=...
+router.get('/receita', async (req, res) => {
+  try {
+    const { data_de, data_ate } = req.query;
+    if (!data_de || !data_ate) return res.status(400).json({ error: 'Informe data_de e data_ate.' });
+    const row = await runGet(`
+      SELECT COALESCE(SUM(valor_cobrado - desconto_aplicado), 0) AS receita
+      FROM mensalidade
+      WHERE status = 'pago' AND data_inicio >= ? AND data_inicio <= ?
+    `, [data_de, data_ate]);
+    res.json({ receita: row.receita });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-    if (hoje.getDate() > diaVencimento) {
-      dataInicial.setMonth(dataInicial.getMonth() + 1);
-    }
+// GET /mensalidades/por-plano
+router.get('/por-plano', async (req, res) => {
+  try {
+    const { data_de, data_ate } = req.query;
+    if (!data_de || !data_ate) return res.status(400).json({ error: 'Informe data_de e data_ate.' });
+    const rows = await runQuery(`
+      SELECT p.nome AS plano, COUNT(m.id) AS total_mensalidades, SUM(m.valor_cobrado) AS total_receita
+      FROM mensalidade m
+      JOIN plano p ON m.plano_id = p.id
+      WHERE m.status = 'pago' AND m.data_inicio >= ? AND m.data_inicio <= ?
+      GROUP BY p.nome
+      ORDER BY total_receita DESC
+    `, [data_de, data_ate]);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-    for (let i = 0; i < meses; i++) {
-      const vencimentoDate = new Date(dataInicial.getFullYear(), dataInicial.getMonth() + i, diaVencimento);
-      const vencimentoISO = vencimentoDate.toISOString().split('T')[0];
-
-      const existente = await runGet(
-        'SELECT id FROM mensalidade WHERE aluno_id = ? AND vencimento = ?', [alunoId, vencimentoISO]
-      );
-
-      if (!existente) {
-        const result = await runExecute(
-          'INSERT INTO mensalidade (aluno_id, vencimento, valor_cobrado, desconto_aplicado, status) VALUES (?, ?, ?, ?, ?)',
-          [alunoId, vencimentoISO, valorBase, 0, 'em_aberto']
-        );
-        mensalidadesCriadas.push({ id: result.id, aluno_id: alunoId, vencimento: vencimentoISO });
-      }
-    }
-
-    await sincronizarFinanceiro();
-    res.json({ message: `${mensalidadesCriadas.length} mensalidades futuras geradas.`, mensalidadesCriadas });
+// GET /mensalidades/sem-acesso
+router.get('/sem-acesso', async (req, res) => {
+  try {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const rows = await runQuery(`
+      SELECT a.*
+      FROM aluno a
+      LEFT JOIN (
+        SELECT aluno_id FROM mensalidade
+        WHERE status = 'pago' AND data_inicio <= ? AND data_fim >= ?
+        GROUP BY aluno_id
+      ) m ON a.id = m.aluno_id
+      WHERE m.aluno_id IS NULL AND a.status = 'ativo'
+    `, [hoje, hoje]);
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

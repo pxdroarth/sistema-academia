@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const { runQuery } = require("../dbHelper");
+// 👉 Importe o serviço de sincronização financeira
+const { sincronizarFinanceiro } = require("../services/FinanceService");
 
 // 🔹 Listar vendas com filtro opcional por data
 router.get("/", async (req, res) => {
@@ -72,6 +74,9 @@ router.post("/", async (req, res) => {
       "UPDATE produto SET estoque = estoque - ? WHERE id = ?",
       [quantidade, produto_id]
     );
+
+    // 💵 👉 SINCRONIZAÇÃO FINANCEIRA AUTOMÁTICA
+    await sincronizarFinanceiro(); // Garante que o dashboard e KPIs estejam atualizados
 
     // ✅ Resposta final
     res.status(201).json({

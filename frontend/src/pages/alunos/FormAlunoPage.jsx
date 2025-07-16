@@ -1,172 +1,135 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { fetchAlunoById, createAluno, updateAluno, fetchPlanos } from "../../services/Api";
 
 export default function FormAlunoPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [nome, setNome] = useState("");
-  const [cpf, setCpf] = useState("");
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState("ativo");
-  const [diaVencimento, setDiaVencimento] = useState("");
-  const [planoId, setPlanoId] = useState("");
-  const [planos, setPlanos] = useState([]); // lista de planos
-  const [error, setError] = useState(null);
+  const isNovo = !id || id === "novo";
 
+  const [form, setForm] = useState({
+    nome: "",
+    cpf: "",
+    email: "",
+    status: "ativo",
+    dia_vencimento: "",
+    plano_id: "",
+  });
+
+  const [planos, setPlanos] = useState([]);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState(null);
+
+  // ✅ Carrega planos sempre
   useEffect(() => {
-    // Buscar planos para popular select
-    async function carregarPlanos() {
-      try {
-        const data = await fetchPlanos();
-        setPlanos(data);
-      } catch {
-        setError("Erro ao carregar planos.");
-      }
-    }
-    carregarPlanos();
+    fetch("http://localhost:3001/planos")
+      .then(res => res.json())
+      .then(setPlanos)
+      .catch(() => setErro("Erro ao carregar planos"));
   }, []);
 
+  // ✅ Busca dados do aluno apenas se não for cadastro
   useEffect(() => {
-    if (id) {
-      fetchAlunoById(id)
-        .then((aluno) => {
-          setNome(aluno.nome || "");
-          setCpf(aluno.cpf || "");
-          setEmail(aluno.email || "");
-          setStatus(aluno.status || "ativo");
-          setDiaVencimento(aluno.dia_vencimento ? String(aluno.dia_vencimento) : "");
-          setPlanoId(aluno.plano_id ? String(aluno.plano_id) : "");
-        })
-        .catch(() => setError("Erro ao carregar dados do aluno."));
-    }
-  }, [id]);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError(null);
-
-    const diaNum = Number(diaVencimento);
-    if (!diaVencimento || isNaN(diaNum) || diaNum < 1 || diaNum > 31) {
-      setError("Informe um dia de vencimento válido (1 a 31).");
-      return;
-    }
-    if (!planoId) {
-      setError("Selecione um plano.");
-      return;
-    }
-
-    const dadosAluno = {
-      nome,
-      cpf,
-      email,
-      status,
-      dia_vencimento: diaNum,
-      plano_id: Number(planoId),
-    };
-
+  if (isNovo) return; // ✅ Não busca aluno se for cadastro novo
+  
+  async function carregarAluno() {
     try {
-      if (id) {
-        await updateAluno(id, dadosAluno);
-      } else {
-        await createAluno(dadosAluno);
-      }
-      navigate("/alunos");
-    } catch {
-      setError("Erro ao salvar dados do aluno.");
+      const res = await fetch(`http://localhost:3001/alunos/${id}`);
+      if (!res.ok) throw new Error("Aluno não encontrado");
+      const data = await res.json();
+      setForm({
+        nome: data.nome,
+        cpf: data.cpf,
+        email: data.email,
+        status: data.status,
+        dia_vencimento: data.dia_vencimento || "",
+        plano_id: data.plano_id || "",
+      });
+    } catch (err) {
+      setErro(err.message);
     }
   }
 
+  carregarAluno();
+}, [id, isNovo]);
+
+  function handleChange(e) {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setCarregando(true);
+    setErro(null);
+
+    try {
+      const metodo = isNovo ? "POST" : "PUT";
+      const url = isNovo
+        ? "http://localhost:3001/alunos"
+        : `http://localhost:3001/alunos/${id}`;
+
+      const res = await fetch(url, {
+        method: metodo,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (!res.ok) throw new Error("Erro ao salvar aluno");
+      alert(isNovo ? "Aluno cadastrado!" : "Aluno atualizado!");
+      navigate("/alunos");
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  if (erro) return <div className="p-4 text-red-600 font-bold">Erro: {erro}</div>;
+
   return (
-    <div className="max-w-md mx-auto bg-white p-6 rounded shadow">
-      <h2 className="text-xl font-bold mb-4">{id ? "Editar Aluno" : "Novo Aluno"}</h2>
-
-      {error && <p className="text-red-600 mb-4">{error}</p>}
-
+    <div className="max-w-xl mx-auto p-6 bg-white rounded-xl shadow-md mt-6">
+      <h2 className="text-xl font-bold mb-4">
+        {isNovo ? "Cadastrar Novo Aluno" : "Editar Aluno"}
+      </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block font-semibold mb-1">Nome</label>
-          <input
-            type="text"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2"
-            required
-          />
+          <label className="font-semibold">Nome:</label>
+          <input name="nome" value={form.nome} onChange={handleChange} required className="w-full border rounded px-4 py-2" />
         </div>
-
         <div>
-          <label className="block font-semibold mb-1">CPF</label>
-          <input
-            type="text"
-            value={cpf}
-            onChange={(e) => setCpf(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2"
-            required
-          />
+          <label className="font-semibold">CPF:</label>
+          <input name="cpf" value={form.cpf} onChange={handleChange} required className="w-full border rounded px-4 py-2" />
         </div>
-
         <div>
-          <label className="block font-semibold mb-1">Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2"
-            required
-          />
+          <label className="font-semibold">Email:</label>
+          <input name="email" type="email" value={form.email} onChange={handleChange} required className="w-full border rounded px-4 py-2" />
         </div>
-
         <div>
-          <label className="block font-semibold mb-1">Status</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2"
-          >
+          <label className="font-semibold">Status:</label>
+          <select name="status" value={form.status} onChange={handleChange} className="w-full border rounded px-4 py-2">
             <option value="ativo">Ativo</option>
             <option value="inativo">Inativo</option>
           </select>
         </div>
-
         <div>
-          <label className="block font-semibold mb-1">Dia de Vencimento</label>
-          <input
-            type="number"
-            min="1"
-            max="31"
-            value={diaVencimento}
-            onChange={(e) => setDiaVencimento(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2"
-            placeholder="Informe o dia do mês para vencimento"
-            required
-          />
+          <label className="font-semibold">Dia de Vencimento:</label>
+          <input type="number" name="dia_vencimento" value={form.dia_vencimento} onChange={handleChange} min={1} max={31} required className="w-full border rounded px-4 py-2" />
         </div>
-
         <div>
-          <label className="block font-semibold mb-1">Plano</label>
-          <select
-            value={planoId}
-            onChange={(e) => setPlanoId(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2"
-            required
-          >
-            <option value="">Selecione um plano</option>
-            {planos.map((plano) => (
-              <option key={plano.id} value={plano.id}>
-                {plano.nome} — R$ {Number(plano.valor_base).toFixed(2)}
-              </option>
+          <label className="font-semibold">Plano:</label>
+          <select name="plano_id" value={form.plano_id} onChange={handleChange} required className="w-full border rounded px-4 py-2">
+            <option value="">Selecione o plano</option>
+            {planos.map(plano => (
+              <option key={plano.id} value={plano.id}>{plano.nome}</option>
             ))}
           </select>
         </div>
-
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-        >
-          Salvar
-        </button>
+        <div className="flex justify-end space-x-3">
+          <button type="button" onClick={() => navigate("/alunos")} className="border px-4 py-2 rounded text-gray-700 hover:bg-gray-100">Cancelar</button>
+          <button type="submit" disabled={carregando} className={`px-4 py-2 rounded text-white font-bold ${carregando ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"}`}>
+            {carregando ? "Salvando..." : "Salvar"}
+          </button>
+        </div>
       </form>
     </div>
   );
