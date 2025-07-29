@@ -1,114 +1,179 @@
-# Sistema de Academia
+# Sistema de Gestão de Academia (ERP)
 
-Este projeto é um **sistema de gestão de academia** desenvolvido com **React** no frontend, **Electron** para criação da aplicação desktop, e **Node.js/Express** no backend. O sistema permite o gerenciamento de alunos, planos, acessos, produtos, vendas e controle de mensalidades.
+Este projeto é um **sistema ERP completo** desenvolvido especificamente para a gestão de academias, combinando **Electron** para aplicação desktop, **React.js** no frontend, e **Node.js/Express** no backend com SQLite para o banco de dados.
 
-## Estrutura de Diretórios (atualizada)
+## Estrutura Atualizada
 
 ```
 sistema-academia/
-│
-├── main.js                   # Arquivo principal do Electron (entry point)
-├── preload.js                # Arquivo de preload para comunicação IPC
-├── package.json              # Configurações principais do projeto (Electron, backend)
-├── node_modules/             # Dependências principais
-├── frontend/                 # Diretório para o frontend (React)
-│   ├── node_modules/         # Dependências do frontend
-│   ├── public/               # Arquivos públicos do React
-│   ├── src/                  # Código-fonte React (componentes, páginas, serviços)
-│   │   ├── components/       # Componentes reutilizáveis (Header, Sidebar, etc.)
-│   │   ├── pages/            # Páginas principais (Dashboard, Alunos, Produtos, etc.)
-│   │   ├── services/         # Serviços para requisições API
-│   │   └── App.jsx           # Componente principal de rotas
-│   ├── package.json          # Dependências do React
-│   └── ...
-├── backend/                  # Backend com Node.js e Express
-│   ├── routes/               # Rotas da API (alunos.js, produtos.js, vendas.js, etc.)
-│   ├── database.js           # Configuração da conexão com o banco de dados
-│   ├── cron.js               # 
-│   └── server.js             # Inicialização do servidor Express
-├── uploads/                  # Pasta de imagens dos produtos
-├── build/                    # Pasta gerada após build do React
-├── dist/                     # Build final para distribuição da aplicação Electron
-└── README.md                 # Documentação do projeto
+├── main.js                 # Arquivo principal Electron
+├── preload.js              # Comunicação IPC Electron
+├── package.json            # Configurações principais
+├── backend/
+│   ├── dbHelper.js         # Funções auxiliares de DB
+│   ├── routes/             # Rotas da API
+│   │   ├── alunos.js
+│   │   ├── mensalidades.js
+│   │   ├── acessos.js
+│   │   ├── planos.js
+│   │   ├── produtos.js
+│   │   └── financeiro.js
+│   ├── helpers/
+│   │   └── periodoHelper.js
+│   ├── services/
+│   │   └── FinanceService.js
+│   ├── cron.js             # Automação Node-Cron
+│   └── server.js           # Inicialização Express
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   │   ├── alunos/
+│   │   │   │   ├── AlunosPage.jsx
+│   │   │   │   ├── FormAlunoPage.jsx
+│   │   │   │   └── PerfilPage.jsx
+│   │   │   ├── mensalidades/
+│   │   │   │   └── ModalNovaMensalidade.jsx
+│   │   │   └── financeiro/
+│   │   │       └── FinanceiroDashboard.jsx
+│   │   ├── services/
+│   │   │   └── api.js
+│   │   └── App.jsx
+│   └── package.json
+├── uploads/                # Imagens produtos
+├── dist/                   # Distribuição Electron
+└── README.md
 ```
 
 ## Tecnologias Utilizadas
 
-- **Electron**: Para criação da aplicação desktop com recursos nativos.
-- **React.js**: Para construção da interface do usuário.
-- **Node.js/Express**: Para gerenciamento das rotas e lógica de backend.
-- **MySQL**: Banco de dados relacional utilizado no backend.
-- **Multer**: Para upload de imagens (produtos).
-- **IPC (Inter-Process Communication)**: Comunicação entre processos do Electron.
+* **Electron** (Desktop)
+* **React.js** (Frontend)
+* **Node.js + Express** (Backend)
+* **SQLite** (Banco de Dados)
+* **Tailwind CSS** (Design)
+* **Node-Cron** (Automação diária)
 
-## Funcionalidades
+## Funcionalidades Atualizadas
 
-- Cadastro, edição, exclusão e listagem de **alunos**.
-- Controle de **mensalidades** com status (em dia, pendente).
-- Gerenciamento de **acessos** por data e horário.
-- Cadastro e venda de **produtos** (água, suplementos, etc.).
-- Visualização do **perfil do aluno** com abas (informações, mensalidades, acessos).
-- Controle de estoque automático ao realizar vendas.
-- ### 🔄 Automação com Node-Cron
+* **Gestão de Alunos:**
 
-O sistema executa um job diário via [node-cron](https://www.npmjs.com/package/node-cron) que:
+  * Cadastro com validação.
+  * Perfil detalhado com abas (Informações, Mensalidades, Acessos).
+  * Status dinâmico: em dia ou atrasado.
+  * Filtros rápidos e contadores de status para gestão.
 
-- Verifica todos os alunos no banco SQLite;
-- Identifica aqueles com mensalidade vencida ou não paga no mês atual;
-- Atualiza o status de acesso como "bloqueado";
-- Garante que somente alunos **com pagamento em dia** possam ter acesso **liberado** pela catraca facial (integração Hikvision API).
+* **Mensalidades:**
 
-Essa automação torna o sistema robusto e elimina a necessidade de controle manual de inadimplência.
+  * Controle avançado com status (pago, em aberto).
+  * Pagamentos imediatos com cálculo automático de datas.
+  * Histórico completo paginado.
 
-## Instalação e Execução Local
+* **Acessos:**
 
-### 1. Clonar o Repositório
+  * Histórico detalhado com resultados (permitido/negado).
+  * Paginação eficiente para grandes volumes de dados.
+
+* **Financeiro Completo (ERP):**
+
+  * Dashboard financeiro com KPIs (receita, despesa, lucro real).
+  * Gestão completa de contas a pagar e receber.
+  * Plano de contas com categorias padronizadas.
+
+* **Produtos e Vendas:**
+
+  * Cadastro de produtos com imagens.
+  * Gestão de estoque integrada às vendas.
+
+## Automação e Integração
+
+* Automação diária via **Node-Cron** para gestão automática de inadimplência.
+* Integração biométrica facial via API Hikvision para acesso.
+
+## Instalação e Execução
+
+### 1. Clone o Repositório
+
 ```bash
 git clone https://github.com/pxdroarth/sistema-academia.git
 cd sistema-academia
 ```
 
-### 2. Instalar Dependências
+### 2. Instale Dependências
 
-#### Backend + Electron:
+**Backend e Electron:**
+
 ```bash
 npm install
 ```
 
-#### Frontend:
+**Frontend React:**
+
 ```bash
 cd frontend
 npm install
 ```
 
-### 3. Executar o Backend (API + Electron)
+### 3. Executar Backend e Electron
+
 ```bash
 npm start
 ```
 
-### 4. Executar o Frontend React
+### 4. Executar Frontend React
+
 ```bash
 cd frontend
 npm start
 ```
 
-## Observações
+## Estrutura do Banco de Dados
 
-- Para o funcionamento correto, é necessário ter o banco de dados configurado (MySQL) com as tabelas adequadas.
-- O backend está configurado para rodar na porta `3001` e o frontend na porta `3000`.
-- O Electron carrega a aplicação web localmente e pode funcionar offline após o build.
+* **Aluno:** Informações pessoais, status e plano.
+* **Mensalidade:** Status de pagamento, vencimentos e histórico.
+* **Acesso:** Registros de entrada e saída dos alunos.
+* **Plano:** Planos oferecidos pela academia.
+* **Produtos:** Cadastro e estoque de produtos vendidos.
+* **Conta Financeira:** Registro financeiro completo (despesas e receitas).
 
-## Dependencias atuais do projeto 
+## Melhorias Recentes
+
+* Página de alunos com filtros de status (em dia, atrasado).
+* Perfil do aluno com paginação nos acessos.
+* Atualização dinâmica de status de mensalidade no frontend.
+
+## Dependências Atualizadas
+
+```json
 "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "multer": "^2.0.0",
-    "mysql2": "^3.14.1",
-    "react": "^19.1.0",
-    "node-cron": "^4.0.7",
-    "react-dom": "^19.1.0"
-    
+  "cors": "^2.8.5",
+  "express": "^5.1.0",
+  "multer": "^2.0.0",
+  "sqlite3": "^5.1.6",
+  "react": "^19.1.0",
+  "node-cron": "^4.0.7",
+  "react-dom": "^19.1.0",
+  "tailwindcss": "^3.4.1"
+}
+```
+📅 Banco de Dados Atualizado
+Tabela	Descrição
+aluno	Cadastro de alunos, vínculo plano
+mensalidade	Pagamentos, status, períodos
+acesso	Controle de acessos, bloqueios
+produto	Cadastro + estoque
+venda_produto	Registro de vendas
+conta_financeira	ERP financeiro centralizado
+plano_contas	Categorias ERP
+orcamento	Orçamentos futuros
+
+## Contato
+
+Para sugestões ou dúvidas, entre em contato:
+
+* Pedro Arthur Maia: [Pedroarthurmaia2000@gmail.com](mailto:Pedroarthurmaia2000@gmail.com)
 
 ---
 
-Para dúvidas ou melhorias, entre em contato com [Pedro Maia](mailto:Pedroarthurmaia2000@gmail.com).
+**Projeto desenvolvido por Pedro Arthur Maia.**\*

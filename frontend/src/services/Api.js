@@ -4,7 +4,7 @@ const API_BASE_URL = 'http://localhost:3001';
 
 export async function fetchAlunos() {
   const response = await fetch(`${API_BASE_URL}/alunos`);
-  if (!response.ok) throw new Error("Erro ao buscar alunos");
+  if (!response.ok) throw new Error("Erro ao buscar alunos com status");
   return await response.json();
 }
 
@@ -34,7 +34,7 @@ export async function updateAluno(id, dadosAluno) {
   return await response.json();
 }
 
-// ============ MENSALIDADES (cadastro) ============
+// ============ MENSALIDADES ============
 
 export async function cadastrarMensalidade(dados) {
   const response = await fetch(`${API_BASE_URL}/mensalidades`, {
@@ -43,6 +43,12 @@ export async function cadastrarMensalidade(dados) {
     body: JSON.stringify(dados),
   });
   if (!response.ok) throw new Error("Erro ao cadastrar mensalidade");
+  return await response.json();
+}
+
+export async function fetchMensalidadesPorAluno(alunoId, pagina = 1, limite = 10) {
+  const response = await fetch(`${API_BASE_URL}/mensalidades/aluno/${alunoId}?pagina=${pagina}&limite=${limite}`);
+  if (!response.ok) throw new Error("Erro ao buscar mensalidades do aluno");
   return await response.json();
 }
 
@@ -79,7 +85,7 @@ export async function fetchProdutos() {
 export async function createProduto(dadosProduto) {
   const response = await fetch(`${API_BASE_URL}/produtos`, {
     method: 'POST',
-    body: dadosProduto, // É FormData (não setar Content-Type)
+    body: dadosProduto,
   });
   if (!response.ok) throw new Error("Erro ao criar produto");
   return await response.json();
@@ -88,7 +94,7 @@ export async function createProduto(dadosProduto) {
 export async function updateProduto(id, dadosProduto) {
   const response = await fetch(`${API_BASE_URL}/produtos/${id}`, {
     method: 'PUT',
-    body: dadosProduto, // Também pode ser FormData se houver imagem
+    body: dadosProduto,
   });
   if (!response.ok) throw new Error("Erro ao atualizar produto");
   return await response.json();
@@ -104,10 +110,16 @@ export async function deleteProduto(id) {
 
 // ============ VENDAS ============
 
-export async function fetchVendasProdutos() {
-  const response = await fetch(`${API_BASE_URL}/vendas-produtos`);
+export async function fetchVendasProdutos({ data_inicial = "", data_final = "", pagina = 1, limite = 10 } = {}) {
+  const params = new URLSearchParams();
+  if (data_inicial) params.append('data_inicial', data_inicial);
+  if (data_final) params.append('data_final', data_final);
+  params.append('pagina', pagina);
+  params.append('limite', limite);
+
+  const response = await fetch(`${API_BASE_URL}/vendas-produtos?${params.toString()}`);
   if (!response.ok) throw new Error("Erro ao buscar vendas");
-  return await response.json();
+  return await response.json(); // { vendas: [], total: n }
 }
 
 export async function createVendaProduto(dadosVenda) {
@@ -119,3 +131,4 @@ export async function createVendaProduto(dadosVenda) {
   if (!response.ok) throw new Error("Erro ao registrar venda");
   return await response.json();
 }
+

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { cadastrarMensalidade } from "../../services/Api";
+import { toast } from "react-toastify";
 
 export default function ModalNovaMensalidade({ open, onClose, aluno, planos, onSaved }) {
   const [form, setForm] = useState({
@@ -52,14 +53,17 @@ export default function ModalNovaMensalidade({ open, onClose, aluno, planos, onS
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.plano_id || !form.valor_cobrado) return alert("Selecione um plano e preencha o valor!");
+    if (!form.plano_id || !form.valor_cobrado) {
+      toast.error("Selecione um plano e preencha o valor!");
+      return;
+    }
     try {
       await cadastrarMensalidade(form);
-      alert("Mensalidade registrada com sucesso!");
+      toast.success("Mensalidade registrada com sucesso!");
       if (onSaved) onSaved();
       onClose();
     } catch {
-      alert("Erro ao registrar mensalidade!");
+      toast.error("Erro ao registrar mensalidade!");
     }
   };
 

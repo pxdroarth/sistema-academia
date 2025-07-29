@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export default function FormAlunoPage() {
   const { id } = useParams();
@@ -20,7 +21,6 @@ export default function FormAlunoPage() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(null);
 
-  // ✅ Carrega planos sempre
   useEffect(() => {
     fetch("http://localhost:3001/planos")
       .then(res => res.json())
@@ -28,30 +28,27 @@ export default function FormAlunoPage() {
       .catch(() => setErro("Erro ao carregar planos"));
   }, []);
 
-  // ✅ Busca dados do aluno apenas se não for cadastro
   useEffect(() => {
-  if (isNovo) return; // ✅ Não busca aluno se for cadastro novo
-  
-  async function carregarAluno() {
-    try {
-      const res = await fetch(`http://localhost:3001/alunos/${id}`);
-      if (!res.ok) throw new Error("Aluno não encontrado");
-      const data = await res.json();
-      setForm({
-        nome: data.nome,
-        cpf: data.cpf,
-        email: data.email,
-        status: data.status,
-        dia_vencimento: data.dia_vencimento || "",
-        plano_id: data.plano_id || "",
-      });
-    } catch (err) {
-      setErro(err.message);
+    if (isNovo) return;
+    async function carregarAluno() {
+      try {
+        const res = await fetch(`http://localhost:3001/alunos/${id}`);
+        if (!res.ok) throw new Error("Aluno não encontrado");
+        const data = await res.json();
+        setForm({
+          nome: data.nome,
+          cpf: data.cpf,
+          email: data.email,
+          status: data.status,
+          dia_vencimento: data.dia_vencimento || "",
+          plano_id: data.plano_id || "",
+        });
+      } catch (err) {
+        setErro(err.message);
+      }
     }
-  }
-
-  carregarAluno();
-}, [id, isNovo]);
+    carregarAluno();
+  }, [id, isNovo]);
 
   function handleChange(e) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -75,10 +72,11 @@ export default function FormAlunoPage() {
       });
 
       if (!res.ok) throw new Error("Erro ao salvar aluno");
-      alert(isNovo ? "Aluno cadastrado!" : "Aluno atualizado!");
+
+      toast.success(isNovo ? "Aluno cadastrado com sucesso!" : "Aluno atualizado com sucesso!");
       navigate("/alunos");
     } catch (error) {
-      alert(error.message);
+      toast.error(error.message || "Erro ao salvar aluno");
     } finally {
       setCarregando(false);
     }

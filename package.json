@@ -2,16 +2,16 @@
   "name": "sistema-academia",
   "version": "1.0.0",
   "main": "main.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "react-scripts start",
-    "electron-start": "electron .",
-    "build": "react-scripts build && electron-builder"
-  },
-  "keywords": [],
-  "author": "",
+  "description": "Sistema de gestão de academia com ERP",
+  "author": "Pedro Arthur",
   "license": "ISC",
-  "description": "",
+ "scripts": {
+  "start": "react-scripts start",
+  "electron-start": "electron .",
+  "build:frontend": "cd frontend && npm run build && cd .. && mv frontend/build ./", 
+  "dist": "npm run build:frontend && electron-builder"
+  
+},
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
@@ -24,6 +24,24 @@
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "electron": "^36.2.0"
+    "electron": "^36.2.0",
+    "electron-builder": "^24.6.0",
+    "concurrently": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.pa.academia",
+    "productName": "SistemaAcademia",
+    "directories": {
+      "output": "dist_electron"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "frontend/dist/**/*",
+      "backend/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    }
   }
 }

@@ -13,3 +13,9 @@ dist/
 
 # Ignorar arquivos de ambiente
 .env
+
+/dist
+
+/dist_electron
+
+/build

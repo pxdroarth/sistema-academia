@@ -103,7 +103,7 @@ export default function AlunosPage() {
                 <td className="p-2 border">{aluno.nome}</td>
                 <td className="p-2 border">{aluno.cpf}</td>
                 <td className="p-2 border">
-                  {aluno.status === "ativo" ? (
+                  {aluno.status_ativo === "ativo" ? (
                     <span className="text-green-600">✅ Ativo</span>
                   ) : (
                     <span className="text-red-600">❌ Inativo</span>

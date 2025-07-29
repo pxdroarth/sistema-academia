@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { fetchProdutos, deleteProduto } from "../../services/Api";
 import ProdutoForm from "./ProdutoForm";
+import { toast } from "react-toastify";
 
 export default function ProdutosPage() {
   const [produtos, setProdutos] = useState([]);
-  const [erro, setErro] = useState(null);
   const [editProduto, setEditProduto] = useState(null);
 
   useEffect(() => {
@@ -16,7 +16,7 @@ export default function ProdutosPage() {
       const dados = await fetchProdutos();
       setProdutos(Array.isArray(dados) ? dados : []);
     } catch (e) {
-      setErro(e.message);
+      toast.error("Erro ao carregar produtos");
     }
   }
 
@@ -24,9 +24,10 @@ export default function ProdutosPage() {
     if (window.confirm("Confirma exclusão do produto?")) {
       try {
         await deleteProduto(id);
+        toast.success("Produto excluído!");
         carregarProdutos();
       } catch (e) {
-        alert("Erro ao deletar: " + e.message);
+        toast.error("Erro ao excluir: " + (e.message || ""));
       }
     }
   }
@@ -34,10 +35,8 @@ export default function ProdutosPage() {
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white rounded shadow space-y-6">
       <h2 className="text-2xl font-bold text-blue-700">Produtos</h2>
-      {erro && <p className="text-red-600">{erro}</p>}
 
       <ProdutoForm
-        key={editProduto ? editProduto.id : "new"}
         produto={editProduto}
         onSuccess={() => {
           setEditProduto(null);
@@ -59,9 +58,7 @@ export default function ProdutosPage() {
         <tbody>
           {produtos.length === 0 ? (
             <tr>
-              <td colSpan={5} className="p-3 text-center">
-                Nenhum produto encontrado.
-              </td>
+              <td colSpan={5} className="p-3 text-center">Nenhum produto encontrado.</td>
             </tr>
           ) : (
             produtos.map((produto) => (
@@ -80,20 +77,18 @@ export default function ProdutosPage() {
                   )}
                 </td>
                 <td className="p-3 border">{produto.nome}</td>
-                <td className="p-3 border">
-                  R$ {parseFloat(produto.preco || 0).toFixed(2)}
-                </td>
-                <td className="p-3 border">{produto.estoque ?? 0}</td>
+                <td className="p-3 border">R$ {parseFloat(produto.preco || 0).toFixed(2)}</td>
+                <td className="p-3 border">{produto.estoque}</td>
                 <td className="p-3 border space-x-2">
                   <button
                     onClick={() => setEditProduto(produto)}
-                    className="px-3 py-1 bg-yellow-400 rounded hover:bg-yellow-500"
+                    className="bg-yellow-400 px-3 py-1 rounded hover:bg-yellow-500"
                   >
                     Editar
                   </button>
                   <button
                     onClick={() => handleDelete(produto.id)}
-                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                    className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
                   >
                     Excluir
                   </button>

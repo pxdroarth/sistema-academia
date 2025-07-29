@@ -1,143 +1,107 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
+import { useForm } from "react-hook-form";
 import { createProduto, updateProduto } from "../../services/Api";
+import { toast } from "react-toastify";
 
 export default function ProdutoForm({ produto, onSuccess, onCancel }) {
-  const [nome, setNome] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [preco, setPreco] = useState("");
-  const [estoque, setEstoque] = useState("");
-  const [imagemFile, setImagemFile] = useState(null);
-  const [erro, setErro] = useState(null);
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
 
   useEffect(() => {
-    if (produto) {
-      setNome(produto.nome || "");
-      setDescricao(produto.descricao || "");
-      setPreco(produto.preco !== undefined ? produto.preco : "");
-      setEstoque(produto.estoque !== undefined ? produto.estoque : "");
-      setImagemFile(null);
-      setErro(null);
-    } else {
-      setNome("");
-      setDescricao("");
-      setPreco("");
-      setEstoque("");
-      setImagemFile(null);
-      setErro(null);
-    }
-  }, [produto]);
+    if (produto) reset(produto);
+    else reset();
+  }, [produto, reset]);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setErro(null);
-
-    if (!nome.trim() || preco === "" || estoque === "") {
-      setErro("Preencha os campos obrigatórios.");
-      return;
-    }
-
-    // Conversão do preço para formato numérico com ponto decimal
-    let precoFormatado = preco.toString().replace(",", ".");
-    if (isNaN(Number(precoFormatado))) {
-      setErro("Preço inválido.");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("nome", nome);
-    formData.append("descricao", descricao);
-    formData.append("preco", precoFormatado);
-    formData.append("estoque", estoque);
-    if (imagemFile) {
-      formData.append("imagem", imagemFile);
-    }
-
+  const onSubmit = async (data) => {
     try {
-      if (produto && produto.id) {
+      const formData = new FormData();
+      formData.append("nome", data.nome);
+      formData.append("descricao", data.descricao || "");
+      formData.append("preco", data.preco);
+      formData.append("estoque", data.estoque);
+      if (data.imagem && data.imagem.length > 0) {
+        formData.append("imagem", data.imagem[0]);
+      }
+
+      if (produto?.id) {
         await updateProduto(produto.id, formData);
+        toast.success("Produto atualizado!");
       } else {
         await createProduto(formData);
+        toast.success("Produto cadastrado!");
       }
+
       onSuccess();
     } catch (err) {
-      setErro("Erro ao salvar produto: " + (err.message || "Erro desconhecido"));
+      toast.error("Erro: " + (err.message || "Erro desconhecido"));
     }
-  }
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-gray-50 p-4 rounded shadow space-y-4">
-      {erro && <p className="text-red-600">{erro}</p>}
-
+    <form onSubmit={handleSubmit(onSubmit)} className="bg-gray-50 p-4 rounded shadow space-y-4">
       <div>
-        <label className="block font-semibold mb-1">Nome*</label>
+        <label className="block mb-1">Nome*</label>
         <input
-          type="text"
-          value={nome}
-          onChange={e => setNome(e.target.value)}
+          {...register("nome", { required: "Nome é obrigatório" })}
           className="w-full border px-3 py-2 rounded"
-          required
-          autoComplete="off"
+          placeholder="Nome do Produto"
         />
+        {errors.nome && <p className="text-red-500">{errors.nome.message}</p>}
       </div>
 
       <div>
-        <label className="block font-semibold mb-1">Descrição</label>
+        <label className="block mb-1">Descrição</label>
         <textarea
-          value={descricao}
-          onChange={e => setDescricao(e.target.value)}
+          {...register("descricao")}
           className="w-full border px-3 py-2 rounded"
+          placeholder="Descrição opcional"
           rows={3}
         />
       </div>
 
       <div>
-        <label className="block font-semibold mb-1">Preço* (ex: 10.50)</label>
+        <label className="block mb-1">Preço* (R$)</label>
         <input
           type="text"
-          value={preco}
-          onChange={e => setPreco(e.target.value)}
+          {...register("preco", { required: "Preço é obrigatório" })}
           className="w-full border px-3 py-2 rounded"
           placeholder="0.00"
-          required
-          autoComplete="off"
         />
+        {errors.preco && <p className="text-red-500">{errors.preco.message}</p>}
       </div>
 
       <div>
-        <label className="block font-semibold mb-1">Estoque*</label>
+        <label className="block mb-1">Estoque*</label>
         <input
           type="number"
-          min="0"
-          step="1"
-          value={estoque}
-          onChange={e => setEstoque(e.target.value)}
+          {...register("estoque", { required: "Estoque é obrigatório", min: { value: 0, message: "Mínimo 0" } })}
           className="w-full border px-3 py-2 rounded"
-          required
-          autoComplete="off"
+          placeholder="0"
         />
+        {errors.estoque && <p className="text-red-500">{errors.estoque.message}</p>}
       </div>
 
       <div>
-        <label className="block font-semibold mb-1">Imagem</label>
+        <label className="block mb-1">Imagem</label>
         <input
           type="file"
+          {...register("imagem")}
           accept="image/*"
-          onChange={e => setImagemFile(e.target.files[0])}
         />
       </div>
 
-      <div className="flex space-x-4">
+      <div className="flex gap-4">
         <button
           type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          disabled={isSubmitting}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
-          {produto ? "Atualizar" : "Cadastrar"}
+          {isSubmitting ? "Salvando..." : produto ? "Atualizar" : "Cadastrar"}
         </button>
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-400 rounded hover:bg-gray-500"
+            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
           >
             Cancelar
           </button>

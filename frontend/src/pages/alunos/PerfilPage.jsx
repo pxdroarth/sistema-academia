@@ -11,22 +11,27 @@ export default function PerfilPage() {
   const [erro, setErro] = useState(null);
   const [abaAtiva, setAbaAtiva] = useState("informacoes");
 
-  // Mensalidades
   const [mensalidades, setMensalidades] = useState([]);
   const [totalMensalidades, setTotalMensalidades] = useState(0);
   const [paginaMensalidade, setPaginaMensalidade] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [planos, setPlanos] = useState([]);
 
-  // Acessos
   const [acessos, setAcessos] = useState([]);
   const [paginaAcesso, setPaginaAcesso] = useState(1);
   const [totalAcessos, setTotalAcessos] = useState(0);
 
   const [toastMsg, setToastMsg] = useState(null);
 
-  const resultadoTexto = { liberado: "Permitido", bloqueado: "Negado" };
-  const resultadoClasse = { liberado: "text-green-700", bloqueado: "text-red-600" };
+  const resultadoTexto = {
+    permitido: "Permitido",
+    negado: "Negado",
+  };
+
+  const resultadoClasse = {
+    permitido: "text-green-700",
+    negado: "text-red-600",
+  };
 
   useEffect(() => {
     fetch(`http://localhost:3001/alunos/${id}`)
@@ -39,7 +44,9 @@ export default function PerfilPage() {
   }, [id]);
 
   useEffect(() => {
-    fetch(`http://localhost:3001/mensalidades/aluno/${id}?pagina=${paginaMensalidade}&limite=10`)
+    fetch(
+      `http://localhost:3001/mensalidades/aluno/${id}?pagina=${paginaMensalidade}&limite=10`
+    )
       .then((res) => res.json())
       .then((data) => {
         setMensalidades(data.mensalidades);
@@ -49,7 +56,9 @@ export default function PerfilPage() {
   }, [id, paginaMensalidade]);
 
   useEffect(() => {
-    fetch(`http://localhost:3001/acessos/aluno/${id}?pagina=${paginaAcesso}&limite=10`)
+    fetch(
+      `http://localhost:3001/acessos/aluno/${id}?pagina=${paginaAcesso}&limite=10`
+    )
       .then((res) => res.json())
       .then(({ acessos, total }) => {
         setAcessos(acessos);
@@ -64,12 +73,15 @@ export default function PerfilPage() {
       .then(setPlanos);
   }, []);
 
-  if (erro) return <div className="p-4 text-red-600 font-bold">Erro: {erro}</div>;
+  if (erro)
+    return <div className="p-4 text-red-600 font-bold">Erro: {erro}</div>;
   if (!aluno) return <div className="p-4">Carregando...</div>;
 
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white rounded shadow">
-      <h2 className="text-xl font-bold mb-2 text-blue-700">Perfil de {aluno.nome}</h2>
+      <h2 className="text-xl font-bold mb-2 text-blue-700">
+        Perfil de {aluno.nome}
+      </h2>
 
       <ToastNotification message={toastMsg} onClose={() => setToastMsg(null)} />
 
@@ -78,7 +90,11 @@ export default function PerfilPage() {
           <button
             key={tab}
             onClick={() => setAbaAtiva(tab)}
-            className={`pb-2 ${abaAtiva === tab ? "border-b-2 border-blue-600 font-semibold text-blue-600" : "text-gray-600"}`}
+            className={`pb-2 ${
+              abaAtiva === tab
+                ? "border-b-2 border-blue-600 font-semibold text-blue-600"
+                : "text-gray-600"
+            }`}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
@@ -87,10 +103,18 @@ export default function PerfilPage() {
 
       {abaAtiva === "informacoes" && (
         <div>
-          <p><strong>Nome:</strong> {aluno.nome}</p>
-          <p><strong>CPF:</strong> {aluno.cpf}</p>
-          <p><strong>Email:</strong> {aluno.email}</p>
-          <p><strong>Status:</strong> {aluno.status}</p>
+          <p>
+            <strong>Nome:</strong> {aluno.nome}
+          </p>
+          <p>
+            <strong>CPF:</strong> {aluno.cpf}
+          </p>
+          <p>
+            <strong>Email:</strong> {aluno.email}
+          </p>
+          <p>
+            <strong>Status:</strong> {aluno.status}
+          </p>
           <button
             onClick={() => navigate(`/alunos/editar/${aluno.id}`)}
             className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded"
@@ -103,12 +127,17 @@ export default function PerfilPage() {
       {abaAtiva === "mensalidades" && (
         <div>
           <div className="flex justify-between mb-2">
-            <h3 className="font-semibold">Mensalidades</h3>
-            <button onClick={() => setShowModal(true)} className="bg-green-600 text-white rounded px-4 py-2">
+            <h3 className="font-semibold">
+              Mensalidades ({totalMensalidades})
+            </h3>
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-green-600 text-white rounded px-4 py-2"
+            >
               + Registrar Mensalidade
             </button>
           </div>
-          <table className="min-w-full border text-sm">
+          <table className="min-w-full border text-sm mb-2">
             <thead className="bg-blue-600 text-white">
               <tr>
                 <th className="p-2 border">Vencimento</th>
@@ -119,23 +148,60 @@ export default function PerfilPage() {
               </tr>
             </thead>
             <tbody>
-              {mensalidades.map(m => (
+              {mensalidades.map((m) => (
                 <tr key={m.id}>
-                  <td className="p-2 border">{m.vencimento?.slice(0,10)}</td>
-                  <td className="p-2 border">R$ {Number(m.valor_cobrado).toFixed(2)}</td>
-                  <td className="p-2 border">R$ {Number(m.desconto_aplicado).toFixed(2)}</td>
-                  <td className="p-2 border text-green-700 font-semibold">{m.status}</td>
+                  <td className="p-2 border">{m.vencimento?.slice(0, 10)}</td>
+                  <td className="p-2 border">
+                    R$ {Number(m.valor_cobrado).toFixed(2)}
+                  </td>
+                  <td className="p-2 border">
+                    R$ {Number(m.desconto_aplicado).toFixed(2)}
+                  </td>
+                  <td className="p-2 border text-green-700 font-semibold">
+                    {m.status}
+                  </td>
                   <td className="p-2 border">{m.observacoes || "-"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <div className="flex justify-between">
+            <button
+              disabled={paginaMensalidade === 1}
+              onClick={() => setPaginaMensalidade((p) => p - 1)}
+              className="bg-gray-300 px-4 py-1 rounded disabled:opacity-50"
+            >
+              Anterior
+            </button>
+            <button
+              disabled={paginaMensalidade * 10 >= totalMensalidades}
+              onClick={() => setPaginaMensalidade((p) => p + 1)}
+              className="bg-gray-300 px-4 py-1 rounded disabled:opacity-50"
+            >
+              Próxima
+            </button>
+          </div>
+          {showModal && (
+            <ModalNovaMensalidade
+              open={showModal} // ✅ Adicionado corretamente
+              aluno={aluno}
+              planos={planos}
+              onClose={() => setShowModal(false)}
+              onSuccess={() => {
+                setToastMsg("Mensalidade registrada com sucesso");
+                setPaginaMensalidade(1);
+              }}
+            />
+          )}
         </div>
       )}
 
       {abaAtiva === "acessos" && (
         <div>
-          <table className="min-w-full border text-sm">
+          <h3 className="font-semibold mb-2">
+            Total de Acessos: {totalAcessos}
+          </h3>
+          <table className="min-w-full border text-sm mb-2">
             <thead className="bg-blue-600 text-white">
               <tr>
                 <th className="p-2 border">Data/Hora</th>
@@ -143,14 +209,38 @@ export default function PerfilPage() {
               </tr>
             </thead>
             <tbody>
-              {acessos.map(acesso => (
+              {acessos.map((acesso) => (
                 <tr key={acesso.id}>
-                  <td className="p-2 border">{new Date(acesso.data_hora).toLocaleString()}</td>
-                  <td className={`p-2 border ${resultadoClasse[acesso.resultado]}`}>{resultadoTexto[acesso.resultado]}</td>
+                  <td className="p-2 border">
+                    {new Date(acesso.data_hora).toLocaleString()}
+                  </td>
+                  <td
+                    className={`p-2 border ${
+                      resultadoClasse[acesso.resultado]
+                    }`}
+                  >
+                    {resultadoTexto[acesso.resultado]}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <div className="flex justify-between">
+            <button
+              disabled={paginaAcesso === 1}
+              onClick={() => setPaginaAcesso((p) => p - 1)}
+              className="bg-gray-300 px-4 py-1 rounded disabled:opacity-50"
+            >
+              Anterior
+            </button>
+            <button
+              disabled={paginaAcesso * 10 >= totalAcessos}
+              onClick={() => setPaginaAcesso((p) => p + 1)}
+              className="bg-gray-300 px-4 py-1 rounded disabled:opacity-50"
+            >
+              Próxima
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -2,19 +2,34 @@ const express = require('express');
 const router = express.Router();
 const { runQuery, runGet, runExecute } = require('../dbHelper');
 
-// 🔹 Listar todos os alunos
+// 🔹 Listar todos os alunos com status de mensalidade e status_ativo baseado em últimos 3 meses
 router.get('/', async (req, res) => {
   try {
     const rows = await runQuery(`
       SELECT a.*,
+
+        -- ✅ Verifica se o vencimento da última mensalidade paga está em dia
         COALESCE((
           SELECT CASE
-            WHEN MAX(m.data_fim) >= DATE('now') THEN 'em_dia'
+            WHEN MAX(m.vencimento) >= DATE('now') THEN 'em_dia'
             ELSE 'atrasado'
           END
           FROM mensalidade m
           WHERE m.aluno_id = a.id AND m.status = 'pago'
-        ), 'atrasado') AS mensalidade_status
+        ), 'atrasado') AS mensalidade_status,
+
+        -- ✅ Verifica se houve alguma mensalidade paga nos últimos 3 meses
+        CASE
+          WHEN EXISTS (
+            SELECT 1 FROM mensalidade m
+            WHERE m.aluno_id = a.id
+              AND m.status = 'pago'
+              AND m.data_fim >= DATE('now', '-3 months')
+          )
+          THEN 'ativo'
+          ELSE 'inativo'
+        END AS status_ativo
+
       FROM aluno a
     `);
     res.json(rows);
@@ -23,8 +38,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-
-// 🔹 Criar novo aluno (sem mensalidade automática)
+// 🔹 Criar novo aluno
 router.post('/', async (req, res) => {
   let { nome, cpf, email, status, dia_vencimento, plano_id } = req.body;
 
@@ -97,7 +111,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// 🔹 Buscar aluno por ID com status débito
+// 🔹 Buscar aluno por ID com débito e plano
 router.get('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   try {

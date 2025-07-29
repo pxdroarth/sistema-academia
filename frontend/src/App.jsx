@@ -13,6 +13,9 @@ import PlanoContasPage from './pages/financeiro/PlanoContasPage';
 import FinanceiroLayout from './pages/financeiro/FinanceiroLayout';
 import FinanceiroDashboard from "./pages/financeiro/FinanceiroDashboard";
 import ContasFinanceirasPage from './pages/financeiro/ContasFinanceirasPage';
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 
 // Wrapper para Pagamento Antecipado
 function PagamentoAntecipadoWrapper() {
@@ -50,6 +53,8 @@ function App() {
           </Route>
         </Route>
       </Routes>
+      
+       <ToastContainer position="top-right" autoClose={3000} />
     </Router>
   );
 }

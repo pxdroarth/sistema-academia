@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { runGet, runExecute, runQuery } = require('../dbHelper');
+const { sincronizarFinanceiro } = require('../services/FinanceService');
 
 // POST /mensalidades — Cria mensalidade SÓ quando paga (não gera débito retroativo)
 router.post('/', async (req, res) => {
@@ -66,6 +67,9 @@ router.post('/', async (req, res) => {
         [Number(vencimento.split('-')[2]), aluno_id]
       );
     }
+
+    // --- Sincroniza o financeiro ao criar mensalidade ---
+    await sincronizarFinanceiro();
 
     res.status(201).json({
       id: result.id,
@@ -136,22 +140,17 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /mensalidades/aluno/:alunoId
-router.get('/aluno/:alunoId', async (req, res) => {
-  const alunoId = parseInt(req.params.alunoId);
-  try {
-    const rows = await runQuery(
-      `SELECT * FROM mensalidade WHERE aluno_id = ? ORDER BY data_inicio DESC`,
-      [alunoId]
+// GET /mensalidades/aluno/:alunoId — AJUSTE NA ORDEM PARA vencimento ASC
+// No backend - rota GET /alunos
+router.get('/alunos', async (req, res) => {
+  const alunos = await runQuery('SELECT * FROM aluno');
+  for (const aluno of alunos) {
+    aluno.mensalidades = await runQuery(
+      'SELECT * FROM mensalidade WHERE aluno_id = ? ORDER BY vencimento ASC',
+      [aluno.id]
     );
-    res.json({
-      mensalidades: rows,
-      total: rows.length
-    });
-  } catch (error) {
-    console.error('[ERRO GET mensalidades/aluno/:alunoId]', error);
-    res.status(500).json({ error: error.message });
   }
+  res.json(alunos);
 });
 
 // PUT /mensalidades/:id
@@ -164,6 +163,10 @@ router.put('/:id', async (req, res) => {
       [valor_cobrado, desconto_aplicado, data_inicio, data_fim, vencimento, observacoes, id]
     );
     if (result.changes === 0) return res.status(404).json({ error: 'Mensalidade não encontrada' });
+
+    // --- Sincroniza o financeiro ao editar mensalidade ---
+    await sincronizarFinanceiro();
+
     res.json({ message: 'Mensalidade atualizada com sucesso' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -176,12 +179,15 @@ router.delete('/:id', async (req, res) => {
   try {
     const result = await runExecute('DELETE FROM mensalidade WHERE id = ?', [id]);
     if (result.changes === 0) return res.status(404).json({ error: 'Mensalidade não encontrada para deletar' });
+
+    // --- Sincroniza o financeiro ao deletar mensalidade ---
+    await sincronizarFinanceiro();
+
     res.json({ message: 'Mensalidade deletada com sucesso' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-
 // GET /mensalidades/vigentes
 router.get('/vigentes', async (req, res) => {
   try {
@@ -269,5 +275,31 @@ router.get('/sem-acesso', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// GET /mensalidades/aluno/:alunoId — mensalidades de UM aluno (com paginação)
+router.get('/aluno/:alunoId', async (req, res) => {
+  const alunoId = parseInt(req.params.alunoId);
+  const pagina = parseInt(req.query.pagina) || 1;
+  const limite = parseInt(req.query.limite) || 10;
+  const offset = (pagina - 1) * limite;
+
+  // Conta o total
+  const totalRows = await runQuery(
+    'SELECT COUNT(*) as total FROM mensalidade WHERE aluno_id = ?',
+    [alunoId]
+  );
+  const total = totalRows[0]?.total || 0;
+
+  // Busca paginado
+  const rows = await runQuery(
+    `SELECT * FROM mensalidade WHERE aluno_id = ? ORDER BY vencimento ASC LIMIT ? OFFSET ?`,
+    [alunoId, limite, offset]
+  );
+
+  res.json({
+    mensalidades: rows,
+    total
+  });
+});
 
 module.exports = router;
+
