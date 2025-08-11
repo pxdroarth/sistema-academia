@@ -30,7 +30,7 @@ export default function AlunosPage() {
   const alunosFiltrados = alunos.filter(
     (a) =>
       a.nome.toLowerCase().includes(busca.toLowerCase()) ||
-      a.cpf.toLowerCase().includes(busca.toLowerCase())
+      (a.matricula + "").includes(busca)
   );
 
   const indexUltimoItem = paginaAtual * itensPorPagina;
@@ -48,7 +48,7 @@ export default function AlunosPage() {
         <h2 className="text-2xl font-bold text-blue-700">Alunos</h2>
         <input
           type="text"
-          placeholder="Buscar por nome ou CPF"
+          placeholder="Buscar por nome ou matrícula"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           className="border px-3 py-2 rounded"
@@ -83,8 +83,8 @@ export default function AlunosPage() {
       <table className="min-w-full border mt-4">
         <thead className="bg-gray-200">
           <tr>
+            <th className="p-2 border">Matrícula</th>
             <th className="p-2 border">Nome</th>
-            <th className="p-2 border">CPF</th>
             <th className="p-2 border">Status</th>
             <th className="p-2 border">Mensalidade</th>
             <th className="p-2 border">Ações</th>
@@ -100,8 +100,8 @@ export default function AlunosPage() {
           ) : (
             alunosPaginados.map((aluno) => (
               <tr key={aluno.id} className="hover:bg-gray-50">
+                <td className="p-2 border font-mono text-sm">{aluno.matricula}</td>
                 <td className="p-2 border">{aluno.nome}</td>
-                <td className="p-2 border">{aluno.cpf}</td>
                 <td className="p-2 border">
                   {aluno.status_ativo === "ativo" ? (
                     <span className="text-green-600">✅ Ativo</span>

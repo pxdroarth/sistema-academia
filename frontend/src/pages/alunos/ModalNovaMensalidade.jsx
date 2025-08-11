@@ -1,128 +1,118 @@
-import React, { useEffect, useState } from "react";
-import { cadastrarMensalidade } from "../../services/Api";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
 
-export default function ModalNovaMensalidade({ open, onClose, aluno, planos, onSaved }) {
+export default function ModalNovaMensalidade({ open, aluno, planos, onClose, onSuccess }) {
   const [form, setForm] = useState({
-    aluno_id: "",
-    plano_id: "",
     valor_cobrado: "",
-    desconto_aplicado: 0,
-    data_inicio: new Date().toISOString().slice(0, 10),
-    vencimento: "",
+    desconto_aplicado: "",
     observacoes: "",
+    data_pagamento: new Date().toISOString().slice(0, 10),
   });
 
-  useEffect(() => {
-    if (open && aluno) {
-      let vencSug = "";
-      if (aluno.dia_vencimento) {
-        const hoje = new Date();
-        let mes = hoje.getMonth();
-        let ano = hoje.getFullYear();
-        if (hoje.getDate() > aluno.dia_vencimento) {
-          mes += 1;
-          if (mes > 11) { mes = 0; ano++; }
-        }
-        vencSug = new Date(ano, mes, aluno.dia_vencimento).toISOString().slice(0, 10);
-      }
-      setForm({
-        aluno_id: aluno.id,
-        plano_id: "",
-        valor_cobrado: "",
-        desconto_aplicado: 0,
-        data_inicio: new Date().toISOString().slice(0, 10),
-        vencimento: vencSug,
-        observacoes: "",
-      });
-    }
-  }, [open, aluno]);
-
-  const handlePlanoChange = (e) => {
-    const plano = planos.find(p => p.id === parseInt(e.target.value));
-    setForm(prev => ({
-      ...prev,
-      plano_id: e.target.value,
-      valor_cobrado: plano ? plano.valor_base : ""
-    }));
-  };
-
-  const handleChange = (e) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.plano_id || !form.valor_cobrado) {
-      toast.error("Selecione um plano e preencha o valor!");
-      return;
-    }
-    try {
-      await cadastrarMensalidade(form);
-      toast.success("Mensalidade registrada com sucesso!");
-      if (onSaved) onSaved();
-      onClose();
-    } catch {
-      toast.error("Erro ao registrar mensalidade!");
-    }
-  };
+  const [carregando, setCarregando] = useState(false);
 
   if (!open) return null;
+
+  function handleChange(e) {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setCarregando(true);
+    try {
+      const res = await fetch("http://localhost:3001/mensalidades", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          aluno_id: aluno.id,
+          plano_id: aluno.plano_id,
+          ...form,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Erro ao registrar mensalidade");
+      toast.success("Mensalidade registrada com sucesso!");
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setCarregando(false);
+    }
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-xl w-full max-w-xl p-6 space-y-4 animate-fade-in">
-        <h2 className="text-xl font-bold text-gray-800">Registrar Pagamento/Mensalidade</h2>
-
-        <div className="space-y-2">
-          <label className="font-semibold text-gray-700">Plano:</label>
-          <select name="plano_id" value={form.plano_id} onChange={handlePlanoChange} required
-            className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500">
-            <option value="">Selecione o plano</option>
-            {planos.map(p => (
-              <option key={p.id} value={p.id}>{p.nome}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+        <h2 className="text-lg font-bold mb-4 text-gray-800">
+          Registrar Mensalidade de {aluno.nome}
+        </h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="font-semibold text-gray-700">Valor Cobrado:</label>
-            <input type="number" name="valor_cobrado" value={form.valor_cobrado} onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2" required />
+            <label className="font-semibold">Valor:</label>
+            <input
+              type="number"
+              name="valor_cobrado"
+              value={form.valor_cobrado}
+              onChange={handleChange}
+              required
+              step="0.01"
+              className="w-full border rounded px-4 py-2"
+            />
           </div>
           <div>
-            <label className="font-semibold text-gray-700">Desconto:</label>
-            <input type="number" name="desconto_aplicado" value={form.desconto_aplicado} onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="font-semibold text-gray-700">Data Início:</label>
-            <input type="date" name="data_inicio" value={form.data_inicio} onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2" required />
+            <label className="font-semibold">Desconto:</label>
+            <input
+              type="number"
+              name="desconto_aplicado"
+              value={form.desconto_aplicado}
+              onChange={handleChange}
+              step="0.01"
+              className="w-full border rounded px-4 py-2"
+            />
           </div>
           <div>
-            <label className="font-semibold text-gray-700">Vencimento:</label>
-            <input type="date" name="vencimento" value={form.vencimento} onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2" required />
+            <label className="font-semibold">Data de Pagamento:</label>
+            <input
+              type="date"
+              name="data_pagamento"
+              value={form.data_pagamento}
+              onChange={handleChange}
+              required
+              className="w-full border rounded px-4 py-2"
+            />
           </div>
-        </div>
-
-        <div>
-          <label className="font-semibold text-gray-700">Observações:</label>
-          <input type="text" name="observacoes" value={form.observacoes} onChange={handleChange}
-            className="w-full border rounded-lg px-4 py-2" />
-        </div>
-
-        <div className="flex justify-end space-x-3 pt-4">
-          <button type="button" onClick={onClose}
-            className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition">Cancelar</button>
-          <button type="submit"
-            className="px-5 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 transition">Salvar</button>
-        </div>
-      </form>
+          <div>
+            <label className="font-semibold">Observações:</label>
+            <textarea
+              name="observacoes"
+              value={form.observacoes}
+              onChange={handleChange}
+              className="w-full border rounded px-4 py-2"
+              rows={3}
+            />
+          </div>
+          <div className="flex justify-end space-x-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border rounded text-gray-700 hover:bg-gray-100"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={carregando}
+              className={`px-4 py-2 rounded text-white font-bold ${
+                carregando ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"
+              }`}
+            >
+              {carregando ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

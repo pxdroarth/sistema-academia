@@ -1,23 +1,39 @@
 const express = require('express');
+const cors = require('cors'); // ✅ Importado ANTES de usar
 const app = express();
 const port = 3001;
 
+// Middlewares globais
+app.use(cors({
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+}));
+app.use(express.json());
 
-// Semente de dados fixa
+// 🔧 Middleware manual adicional (opcional, reforço ao CORS)
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
+
+// 📌 Rotas de planos compartilhados
+const planoAssociadoRoutes = require('./routes/planoAssociado');
+app.use('/plano-associado', planoAssociadoRoutes);
+
+// 📌 Semente de dados fixa (planos de contas)
 const seedPlanoContas = require('./seeds/seedPlanoContas');
-seedPlanoContas(); // Popula tabela de planos de contas, se necessário
+seedPlanoContas();
 
-// Importação dos módulos de rotas
+// 📌 Importação de rotas modulares
 const dashboardFinanceiroRouter = require('./routes/dashboardFinanceiro');
 const ativosRouter = require('./routes/ativos');
 const orcamentoRouter = require('./routes/orcamento');
 
-// Middlewares globais
-const cors = require('cors');
-app.use(cors());
-app.use(express.json());
-
-// Rotas principais do sistema
+// 📌 Rotas principais
 app.use('/alunos', require('./routes/alunos'));
 app.use('/pagamentos', require('./routes/pagamentos'));
 app.use('/planos', require('./routes/planos'));
@@ -30,14 +46,12 @@ app.use('/relatorios', require('./routes/relatorios'));
 app.use('/plano-contas', require('./routes/planoContas'));
 app.use('/contas-financeiras', require('./routes/contasFinanceiras'));
 
-// Rotas do dashboard financeiro (KPIs e sincronização)
+// 📌 Dashboard financeiro
 app.use('/dashboard/financeiro', dashboardFinanceiroRouter);
-
-// Outros módulos financeiros
 app.use('/financeiro/ativos', ativosRouter);
 app.use('/financeiro/orcamento', orcamentoRouter);
 
-// Teste de conexão com banco (healthcheck)
+// 📌 Teste de conexão com banco (healthcheck)
 const db = require('./database');
 app.get('/test-db', (req, res) => {
   db.get('SELECT datetime("now") AS agora', [], (err, row) => {
@@ -46,7 +60,7 @@ app.get('/test-db', (req, res) => {
   });
 });
 
-// Inicialização do servidor
+// ✅ Inicialização do servidor
 app.listen(port, () => {
   console.log(`API backend rodando na porta ${port}`);
   console.log(`Dashboard financeiro: http://localhost:${port}/dashboard/financeiro/kpis`);

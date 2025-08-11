@@ -6,6 +6,8 @@ const menu = [
   { to: "/alunos", label: "Alunos", icon: "👤" },
   { to: "/produtos", label: "Produtos", icon: "🛒" },
   { to: "/vendas-produtos", label: "Vendas", icon: "💰" },
+  { to: "/planos", label: "Planos", icon: "📅" },                // ✅ Novo
+  { to: "/planos/associacoes", label: "Associações", icon: "👥" }, // ✅ Novo
   {
     label: "Financeiro",
     icon: "💸",
@@ -13,7 +15,6 @@ const menu = [
       { to: "/financeiro/dashboardFinanceiro", label: "Dashboard Financeiro" },
       { to: "/financeiro/contas-financeiras", label: "Contas Financeiras" },
       { to: "/financeiro/plano-contas", label: "Plano de Contas" },
-      // { to: "/financeiro/relatorios", label: "Relatórios" }, // futuro
     ],
     to: "/financeiro/dashboard" // permite clique direto para dashboard
   }
@@ -21,7 +22,7 @@ const menu = [
 
 export default function Sidebar({ aberta = true }) {
   const [hovering, setHovering] = useState(false);
-  const [open, setOpen] = useState({}); // controla submenus abertos
+  const [open, setOpen] = useState({});
   const expanded = hovering || aberta;
 
   const handleToggle = (label) => {
@@ -36,12 +37,10 @@ export default function Sidebar({ aberta = true }) {
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
     >
-      {/* Logo / título */}
       <div className="h-16 flex items-center justify-center font-bold text-blue-700 text-lg border-b">
         {expanded ? "Academia SA" : "🏋️"}
       </div>
 
-      {/* Navegação */}
       <nav className="flex-grow px-2 py-4 space-y-1 overflow-y-auto">
         {menu.map((item) =>
           item.submenu ? (

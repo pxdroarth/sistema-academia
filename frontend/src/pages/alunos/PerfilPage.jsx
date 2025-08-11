@@ -1,3 +1,4 @@
+// ... imports mantidos
 import React, { useEffect, useState } from "react";
 import ToastNotification from "../../components/ToastNotification";
 import { useNavigate, useParams } from "react-router-dom";
@@ -23,15 +24,8 @@ export default function PerfilPage() {
 
   const [toastMsg, setToastMsg] = useState(null);
 
-  const resultadoTexto = {
-    permitido: "Permitido",
-    negado: "Negado",
-  };
-
-  const resultadoClasse = {
-    permitido: "text-green-700",
-    negado: "text-red-600",
-  };
+  const resultadoTexto = { permitido: "Permitido", negado: "Negado" };
+  const resultadoClasse = { permitido: "text-green-700", negado: "text-red-600" };
 
   useEffect(() => {
     fetch(`http://localhost:3001/alunos/${id}`)
@@ -44,9 +38,7 @@ export default function PerfilPage() {
   }, [id]);
 
   useEffect(() => {
-    fetch(
-      `http://localhost:3001/mensalidades/aluno/${id}?pagina=${paginaMensalidade}&limite=10`
-    )
+    fetch(`http://localhost:3001/mensalidades/aluno/${id}?pagina=${paginaMensalidade}&limite=10`)
       .then((res) => res.json())
       .then((data) => {
         setMensalidades(data.mensalidades);
@@ -56,9 +48,7 @@ export default function PerfilPage() {
   }, [id, paginaMensalidade]);
 
   useEffect(() => {
-    fetch(
-      `http://localhost:3001/acessos/aluno/${id}?pagina=${paginaAcesso}&limite=10`
-    )
+    fetch(`http://localhost:3001/acessos/aluno/${id}?pagina=${paginaAcesso}&limite=10`)
       .then((res) => res.json())
       .then(({ acessos, total }) => {
         setAcessos(acessos);
@@ -73,8 +63,7 @@ export default function PerfilPage() {
       .then(setPlanos);
   }, []);
 
-  if (erro)
-    return <div className="p-4 text-red-600 font-bold">Erro: {erro}</div>;
+  if (erro) return <div className="p-4 text-red-600 font-bold">Erro: {erro}</div>;
   if (!aluno) return <div className="p-4">Carregando...</div>;
 
   return (
@@ -90,11 +79,7 @@ export default function PerfilPage() {
           <button
             key={tab}
             onClick={() => setAbaAtiva(tab)}
-            className={`pb-2 ${
-              abaAtiva === tab
-                ? "border-b-2 border-blue-600 font-semibold text-blue-600"
-                : "text-gray-600"
-            }`}
+            className={`pb-2 ${abaAtiva === tab ? "border-b-2 border-blue-600 font-semibold text-blue-600" : "text-gray-600"}`}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
@@ -102,19 +87,12 @@ export default function PerfilPage() {
       </div>
 
       {abaAtiva === "informacoes" && (
-        <div>
-          <p>
-            <strong>Nome:</strong> {aluno.nome}
-          </p>
-          <p>
-            <strong>CPF:</strong> {aluno.cpf}
-          </p>
-          <p>
-            <strong>Email:</strong> {aluno.email}
-          </p>
-          <p>
-            <strong>Status:</strong> {aluno.status}
-          </p>
+        <div className="space-y-2">
+          <p><strong>Matrícula:</strong> {aluno.matricula}</p>
+          <p><strong>Nome:</strong> {aluno.nome}</p>
+          <p><strong>Telefone:</strong> {aluno.telefone || "-"}</p>
+          <p><strong>Data de Nascimento:</strong> {aluno.data_nascimento?.slice(0, 10)}</p>
+          <p><strong>Status:</strong> {aluno.status}</p>
           <button
             onClick={() => navigate(`/alunos/editar/${aluno.id}`)}
             className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded"
@@ -127,9 +105,7 @@ export default function PerfilPage() {
       {abaAtiva === "mensalidades" && (
         <div>
           <div className="flex justify-between mb-2">
-            <h3 className="font-semibold">
-              Mensalidades ({totalMensalidades})
-            </h3>
+            <h3 className="font-semibold">Mensalidades ({totalMensalidades})</h3>
             <button
               onClick={() => setShowModal(true)}
               className="bg-green-600 text-white rounded px-4 py-2"
@@ -151,15 +127,9 @@ export default function PerfilPage() {
               {mensalidades.map((m) => (
                 <tr key={m.id}>
                   <td className="p-2 border">{m.vencimento?.slice(0, 10)}</td>
-                  <td className="p-2 border">
-                    R$ {Number(m.valor_cobrado).toFixed(2)}
-                  </td>
-                  <td className="p-2 border">
-                    R$ {Number(m.desconto_aplicado).toFixed(2)}
-                  </td>
-                  <td className="p-2 border text-green-700 font-semibold">
-                    {m.status}
-                  </td>
+                  <td className="p-2 border">R$ {Number(m.valor_cobrado).toFixed(2)}</td>
+                  <td className="p-2 border">R$ {Number(m.desconto_aplicado).toFixed(2)}</td>
+                  <td className="p-2 border text-green-700 font-semibold">{m.status}</td>
                   <td className="p-2 border">{m.observacoes || "-"}</td>
                 </tr>
               ))}
@@ -183,7 +153,7 @@ export default function PerfilPage() {
           </div>
           {showModal && (
             <ModalNovaMensalidade
-              open={showModal} // ✅ Adicionado corretamente
+              open={showModal}
               aluno={aluno}
               planos={planos}
               onClose={() => setShowModal(false)}
@@ -198,9 +168,7 @@ export default function PerfilPage() {
 
       {abaAtiva === "acessos" && (
         <div>
-          <h3 className="font-semibold mb-2">
-            Total de Acessos: {totalAcessos}
-          </h3>
+          <h3 className="font-semibold mb-2">Total de Acessos: {totalAcessos}</h3>
           <table className="min-w-full border text-sm mb-2">
             <thead className="bg-blue-600 text-white">
               <tr>
@@ -214,11 +182,7 @@ export default function PerfilPage() {
                   <td className="p-2 border">
                     {new Date(acesso.data_hora).toLocaleString()}
                   </td>
-                  <td
-                    className={`p-2 border ${
-                      resultadoClasse[acesso.resultado]
-                    }`}
-                  >
+                  <td className={`p-2 border ${resultadoClasse[acesso.resultado]}`}>
                     {resultadoTexto[acesso.resultado]}
                   </td>
                 </tr>

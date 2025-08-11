@@ -1,17 +1,11 @@
 {
-  "name": "sistema-academia",
+    "name": "backend-academia",
   "version": "1.0.0",
-  "main": "main.js",
-  "description": "Sistema de gestão de academia com ERP",
-  "author": "Pedro Arthur",
-  "license": "ISC",
- "scripts": {
-  "start": "react-scripts start",
-  "electron-start": "electron .",
-  "build:frontend": "cd frontend && npm run build && cd .. && mv frontend/build ./", 
-  "dist": "npm run build:frontend && electron-builder"
-  
-},
+  "description": "API Node.js Express para academia",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
@@ -24,24 +18,9 @@
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "electron": "^36.2.0",
-    "electron-builder": "^24.6.0",
-    "concurrently": "^8.0.1"
-  },
-  "build": {
-    "appId": "com.pa.academia",
-    "productName": "SistemaAcademia",
-    "directories": {
-      "output": "dist_electron"
-    },
-    "files": [
-      "main.js",
-      "preload.js",
-      "frontend/dist/**/*",
-      "backend/**/*"
-    ],
-    "win": {
-      "target": "nsis"
+    "vite": "^5.2.0",
+    "vite-plugin-pwa": "^0.18.3",
+    "@vitejs/plugin-react": "^4.2.1"
     }
   }
-}
+

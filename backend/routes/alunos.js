@@ -2,13 +2,13 @@ const express = require('express');
 const router = express.Router();
 const { runQuery, runGet, runExecute } = require('../dbHelper');
 
-// 🔹 Listar todos os alunos com status de mensalidade e status_ativo baseado em últimos 3 meses
+// 🔹 Listar todos os alunos com status de mensalidade e status_ativo
 router.get('/', async (req, res) => {
   try {
     const rows = await runQuery(`
       SELECT a.*,
 
-        -- ✅ Verifica se o vencimento da última mensalidade paga está em dia
+        -- ✅ Status da mensalidade (em dia ou atrasado)
         COALESCE((
           SELECT CASE
             WHEN MAX(m.vencimento) >= DATE('now') THEN 'em_dia'
@@ -18,15 +18,14 @@ router.get('/', async (req, res) => {
           WHERE m.aluno_id = a.id AND m.status = 'pago'
         ), 'atrasado') AS mensalidade_status,
 
-        -- ✅ Verifica se houve alguma mensalidade paga nos últimos 3 meses
+        -- ✅ Atividade nos últimos 3 meses
         CASE
           WHEN EXISTS (
             SELECT 1 FROM mensalidade m
             WHERE m.aluno_id = a.id
               AND m.status = 'pago'
               AND m.data_fim >= DATE('now', '-3 months')
-          )
-          THEN 'ativo'
+          ) THEN 'ativo'
           ELSE 'inativo'
         END AS status_ativo
 
@@ -40,10 +39,10 @@ router.get('/', async (req, res) => {
 
 // 🔹 Criar novo aluno
 router.post('/', async (req, res) => {
-  let { nome, cpf, email, status, dia_vencimento, plano_id } = req.body;
+  let { nome, email, status, dia_vencimento, plano_id, telefone, data_nascimento } = req.body;
 
-  if (!nome || !cpf || !email || !plano_id) {
-    return res.status(400).json({ error: 'Campos obrigatórios faltando (nome, cpf, email, plano_id)' });
+  if (!nome || !email || !plano_id || !data_nascimento) {
+    return res.status(400).json({ error: 'Campos obrigatórios faltando (nome, email, data_nascimento, plano_id)' });
   }
 
   if (!dia_vencimento || isNaN(dia_vencimento) || dia_vencimento < 1 || dia_vencimento > 31) {
@@ -51,14 +50,20 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    // 🔸 Geração automática de matrícula (incremental)
+    const last = await runGet(`SELECT MAX(matricula) AS ultima FROM aluno`);
+    const novaMatricula = (last?.ultima || 1000) + 1;
+
     const result = await runExecute(
-      'INSERT INTO aluno (nome, cpf, email, status, dia_vencimento, plano_id) VALUES (?, ?, ?, ?, ?, ?)',
-      [nome, cpf, email, status || 'ativo', dia_vencimento, plano_id]
+      `INSERT INTO aluno (matricula, nome, email, status, dia_vencimento, plano_id, telefone, data_nascimento)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [novaMatricula, nome, email, status || 'ativo', dia_vencimento, plano_id, telefone, data_nascimento]
     );
 
     res.status(201).json({
       id: result.id,
-      nome, cpf, email, status: status || 'ativo', dia_vencimento, plano_id
+      matricula: novaMatricula,
+      nome, email, status: status || 'ativo', dia_vencimento, plano_id, telefone, data_nascimento
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -85,9 +90,9 @@ router.get('/:id/debito', async (req, res) => {
 // 🔹 Atualizar aluno
 router.put('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  let { nome, cpf, email, status, dia_vencimento, plano_id } = req.body;
+  let { nome, email, status, dia_vencimento, plano_id, telefone, data_nascimento } = req.body;
 
-  if (!nome || !cpf || !email) {
+  if (!nome || !email || !data_nascimento) {
     return res.status(400).json({ error: 'Campos obrigatórios faltando' });
   }
 
@@ -97,21 +102,22 @@ router.put('/:id', async (req, res) => {
 
   try {
     const result = await runExecute(
-      'UPDATE aluno SET nome = ?, cpf = ?, email = ?, status = ?, dia_vencimento = ?, plano_id = ? WHERE id = ?',
-      [nome, cpf, email, status, dia_vencimento || null, plano_id || null, id]
+      `UPDATE aluno SET nome = ?, email = ?, status = ?, dia_vencimento = ?, plano_id = ?, telefone = ?, data_nascimento = ?
+       WHERE id = ?`,
+      [nome, email, status, dia_vencimento || null, plano_id || null, telefone, data_nascimento, id]
     );
 
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Aluno não encontrado para atualizar' });
     }
 
-    res.json({ id, nome, cpf, email, status, dia_vencimento, plano_id });
+    res.json({ id, nome, email, status, dia_vencimento, plano_id, telefone, data_nascimento });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// 🔹 Buscar aluno por ID com débito e plano
+// 🔹 Buscar aluno por ID
 router.get('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   try {

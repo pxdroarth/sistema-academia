@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { runQuery } = require('../dbHelper');
 
-// Listar todos os planos
+// 🔹 Listar todos os planos
 router.get('/', async (req, res) => {
   try {
     const rows = await runQuery('SELECT * FROM plano');
@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Buscar plano por ID
+// 🔹 Buscar plano por ID
 router.get('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   try {
@@ -24,40 +24,56 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Criar um novo plano
+// 🔹 Criar um novo plano
 router.post('/', async (req, res) => {
-  const { nome, valor_base, descricao } = req.body;
-  if (!nome || !valor_base) return res.status(400).json({ error: 'Campos obrigatórios faltando' });
+  const { nome, valor_base, descricao, duracao_em_dias, compartilhado } = req.body;
+
+  if (!nome || valor_base == null || !duracao_em_dias) {
+    return res.status(400).json({ error: 'Campos obrigatórios faltando: nome, valor_base, duração' });
+  }
 
   try {
     const result = await runQuery(
-      'INSERT INTO plano (nome, valor_base, descricao) VALUES (?, ?, ?)',
-      [nome, valor_base, descricao || null]
+      `INSERT INTO plano (nome, valor_base, descricao, duracao_em_dias, compartilhado)
+       VALUES (?, ?, ?, ?, ?)`,
+      [nome, valor_base, descricao || null, duracao_em_dias, compartilhado ? 1 : 0]
     );
-    res.status(201).json({ id: result.lastID, nome, valor_base, descricao });
+    res.status(201).json({
+      id: result.lastID,
+      nome,
+      valor_base,
+      descricao,
+      duracao_em_dias,
+      compartilhado: compartilhado ? 1 : 0
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Atualizar plano por ID
+// 🔹 Atualizar plano por ID
 router.put('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  const { nome, valor_base, descricao } = req.body;
+  const { nome, valor_base, descricao, duracao_em_dias, compartilhado } = req.body;
+
+  if (!nome || valor_base == null || !duracao_em_dias) {
+    return res.status(400).json({ error: 'Campos obrigatórios faltando para atualização' });
+  }
 
   try {
     const result = await runQuery(
-      'UPDATE plano SET nome = ?, valor_base = ?, descricao = ? WHERE id = ?',
-      [nome, valor_base, descricao || null, id]
+      `UPDATE plano SET nome = ?, valor_base = ?, descricao = ?, duracao_em_dias = ?, compartilhado = ? WHERE id = ?`,
+      [nome, valor_base, descricao || null, duracao_em_dias, compartilhado ? 1 : 0, id]
     );
     if (result.changes === 0) return res.status(404).json({ error: 'Plano não encontrado para atualizar' });
-    res.json({ id, nome, valor_base, descricao });
+
+    res.json({ id, nome, valor_base, descricao, duracao_em_dias, compartilhado });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Deletar plano por ID
+// 🔹 Deletar plano por ID
 router.delete('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   try {

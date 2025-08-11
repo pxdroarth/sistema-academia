@@ -1,5 +1,4 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from "react-router-dom";
-
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import AlunosPage from "./pages/alunos/AlunosPage";
@@ -15,6 +14,9 @@ import FinanceiroDashboard from "./pages/financeiro/FinanceiroDashboard";
 import ContasFinanceirasPage from './pages/financeiro/ContasFinanceirasPage';
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import PlanoAssociadosPage from './pages/planos/associacoes/PlanoAssociadosPage'; 
+import React from 'react';
+
 
 
 // Wrapper para Pagamento Antecipado
@@ -43,6 +45,9 @@ function App() {
           <Route path="/produtos" element={<ProdutosPage />} />
           <Route path="/vendas-produtos" element={<VendasProdutosPage />} />
           <Route path="/mensalidades/pagamento-antecipado/:alunoId" element={<PagamentoAntecipadoWrapper />} />
+          <Route path="/planos/associacoes" element={<PlanoAssociadosPage />} />
+
+
 
           {/* Financeiro */}
           <Route path="/financeiro" element={<FinanceiroLayout />}>

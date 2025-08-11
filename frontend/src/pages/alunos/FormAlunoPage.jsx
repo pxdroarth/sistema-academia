@@ -1,3 +1,4 @@
+// imports mantidos
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -5,27 +6,36 @@ import { toast } from "react-toastify";
 export default function FormAlunoPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-
   const isNovo = !id || id === "novo";
 
   const [form, setForm] = useState({
     nome: "",
-    cpf: "",
-    email: "",
     status: "ativo",
     dia_vencimento: "",
     plano_id: "",
+    telefone: "",
+    data_nascimento: "",
+    matricula: "",
   });
 
   const [planos, setPlanos] = useState([]);
+  const [alunos, setAlunos] = useState([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(null);
+
+  const [ehResponsavel, setEhResponsavel] = useState(true);
+  const [responsavelId, setResponsavelId] = useState(null);
 
   useEffect(() => {
     fetch("http://localhost:3001/planos")
       .then(res => res.json())
       .then(setPlanos)
       .catch(() => setErro("Erro ao carregar planos"));
+
+    fetch("http://localhost:3001/alunos")
+      .then(res => res.json())
+      .then(setAlunos)
+      .catch(() => setErro("Erro ao carregar alunos"));
   }, []);
 
   useEffect(() => {
@@ -37,12 +47,16 @@ export default function FormAlunoPage() {
         const data = await res.json();
         setForm({
           nome: data.nome,
-          cpf: data.cpf,
-          email: data.email,
           status: data.status,
           dia_vencimento: data.dia_vencimento || "",
           plano_id: data.plano_id || "",
+          telefone: data.telefone || "",
+          data_nascimento: data.data_nascimento || "",
+          matricula: data.matricula || ""
         });
+
+        // se o aluno for associado (receber esse dado depois via backend), ajuste aqui
+        // setEhResponsavel(data.eh_responsavel !== false)
       } catch (err) {
         setErro(err.message);
       }
@@ -65,13 +79,28 @@ export default function FormAlunoPage() {
         ? "http://localhost:3001/alunos"
         : `http://localhost:3001/alunos/${id}`;
 
-      const res = await fetch(url, {
+      const payload = { ...form };
+
+      const resAluno = await fetch(url, {
         method: metodo,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Erro ao salvar aluno");
+      if (!resAluno.ok) throw new Error("Erro ao salvar aluno");
+
+      // Se não for responsável, associar após criação
+      if (ehResponsavel === false && isNovo) {
+        const novoAluno = await resAluno.json();
+        await fetch("http://localhost:3001/plano-associado", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            aluno_id: novoAluno.id,
+            responsavel_id: responsavelId,
+          }),
+        });
+      }
 
       toast.success(isNovo ? "Aluno cadastrado com sucesso!" : "Aluno atualizado com sucesso!");
       navigate("/alunos");
@@ -90,17 +119,23 @@ export default function FormAlunoPage() {
         {isNovo ? "Cadastrar Novo Aluno" : "Editar Aluno"}
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
+        {!isNovo && (
+          <div>
+            <label className="font-semibold">Matrícula:</label>
+            <input value={form.matricula} disabled className="w-full bg-gray-100 border rounded px-4 py-2 text-gray-600" />
+          </div>
+        )}
         <div>
           <label className="font-semibold">Nome:</label>
           <input name="nome" value={form.nome} onChange={handleChange} required className="w-full border rounded px-4 py-2" />
         </div>
         <div>
-          <label className="font-semibold">CPF:</label>
-          <input name="cpf" value={form.cpf} onChange={handleChange} required className="w-full border rounded px-4 py-2" />
+          <label className="font-semibold">Telefone:</label>
+          <input name="telefone" value={form.telefone} onChange={handleChange} required className="w-full border rounded px-4 py-2" />
         </div>
         <div>
-          <label className="font-semibold">Email:</label>
-          <input name="email" type="email" value={form.email} onChange={handleChange} required className="w-full border rounded px-4 py-2" />
+          <label className="font-semibold">Data de Nascimento:</label>
+          <input type="date" name="data_nascimento" value={form.data_nascimento} onChange={handleChange} required className="w-full border rounded px-4 py-2" />
         </div>
         <div>
           <label className="font-semibold">Status:</label>
@@ -122,6 +157,36 @@ export default function FormAlunoPage() {
             ))}
           </select>
         </div>
+
+        <div>
+          <label className="font-semibold">É responsável pelo plano?</label>
+          <input
+            type="checkbox"
+            checked={ehResponsavel}
+            onChange={(e) => setEhResponsavel(e.target.checked)}
+            className="ml-2"
+          />
+        </div>
+
+        {!ehResponsavel && (
+          <div>
+            <label className="font-semibold">Responsável:</label>
+            <select
+              value={responsavelId || ""}
+              onChange={(e) => setResponsavelId(Number(e.target.value))}
+              className="w-full border rounded px-4 py-2"
+              required
+            >
+              <option value="">Selecione o responsável</option>
+              {alunos.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.matricula} - {a.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="flex justify-end space-x-3">
           <button type="button" onClick={() => navigate("/alunos")} className="border px-4 py-2 rounded text-gray-700 hover:bg-gray-100">Cancelar</button>
           <button type="submit" disabled={carregando} className={`px-4 py-2 rounded text-white font-bold ${carregando ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"}`}>
