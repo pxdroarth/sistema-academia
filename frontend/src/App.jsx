@@ -17,7 +17,16 @@ import "react-toastify/dist/ReactToastify.css";
 import PlanoAssociadosPage from './pages/planos/associacoes/PlanoAssociadosPage'; 
 import React from 'react';
 
-
+// 🔹 Componente de teste
+function TesteVite() {
+  return (
+    <div style={{ padding: 40 }}>
+      <h1 style={{ color: "green", fontSize: "2rem" }}>
+        ✅ Vite está funcionando com React Router!
+      </h1>
+    </div>
+  );
+}
 
 // Wrapper para Pagamento Antecipado
 function PagamentoAntecipadoWrapper() {
@@ -61,6 +70,7 @@ function App() {
       
        <ToastContainer position="top-right" autoClose={3000} />
     </Router>
+    
   );
 }
 

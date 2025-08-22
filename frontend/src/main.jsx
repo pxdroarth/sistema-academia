@@ -4,9 +4,9 @@ import App from './App';
 import './styles/global.css';  // Importa o CSS global aqui
 
 // React 18 usa createRoot para renderizar
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
-);
+)
+
