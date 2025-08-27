@@ -173,7 +173,8 @@ orcamento	Orçamentos futuros
 Para sugestões ou dúvidas, entre em contato:
 
 * Pedro Arthur Maia: [Pedroarthurmaia2000@gmail.com](mailto:Pedroarthurmaia2000@gmail.com)
+* João Pedro Maia Damasceno [devjoaomaia13@gmail.com]
 
 ---
 
-**Projeto desenvolvido por Pedro Arthur Maia.**\*
+**Projeto desenvolvido por Pedro Arthur & João Pedro.**\*
