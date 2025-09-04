@@ -57,6 +57,48 @@ sistema-academia/
 
 ## Funcionalidades Atualizadas
 
+## 📸 Screenshots
+
+## Dashboard Principal do Projeto
+<img width="1919" height="904" alt="image" src="https://github.com/user-attachments/assets/ef7aaa61-5616-4e7a-bf33-633ae93ff024" />
+
+## Informações principais do aluno
+<img width="1915" height="915" alt="image" src="https://github.com/user-attachments/assets/903ab435-a47f-445b-be18-6a0c7ce5a690" />
+
+## Mensalidades é historico do aluno
+<img width="1911" height="911" alt="image" src="https://github.com/user-attachments/assets/96ba6570-2827-4303-aa80-371de297a2cf" />
+
+## Registro de Acessos do aluno
+<img width="1918" height="905" alt="image" src="https://github.com/user-attachments/assets/14a28bc5-e9ea-48ec-823d-e6db738a0343" />
+
+
+## Cadastro e Listagem de Alunos
+<img width="1915" height="913" alt="image" src="https://github.com/user-attachments/assets/fba4913a-2216-43da-97ac-e97a732b2020" />
+<img width="1914" height="902" alt="image" src="https://github.com/user-attachments/assets/3bc615ad-d288-4c65-bf31-414a6f0c9adf" />
+
+## Cadadastro de Produtos
+<img width="1919" height="909" alt="image" src="https://github.com/user-attachments/assets/20bf4177-620e-433d-8039-33a54d1f13c0" />
+
+## Vendas é Historico de Vendas
+<img width="1912" height="905" alt="image" src="https://github.com/user-attachments/assets/9e0b3b8c-5c3a-457c-bcf8-d695301afb4c" />
+
+## Planos, mensalidades 
+<img width="1909" height="910" alt="image" src="https://github.com/user-attachments/assets/3dc64652-69c5-432e-a2a2-7ae0bdde8396" />
+
+## Associações e Vinculos de Planos Compartilhados
+<img width="1913" height="914" alt="image" src="https://github.com/user-attachments/assets/00256bef-67f7-4ee3-aea1-77703a5b1c8c" />
+
+## Tela Principal do Financeiro 
+<img width="1914" height="909" alt="image" src="https://github.com/user-attachments/assets/418d60f9-ad64-42ac-b8a2-09f29c0b2fe3" />
+
+## Contas a pagar, receber
+<img width="1913" height="903" alt="image" src="https://github.com/user-attachments/assets/cfb1b69d-62e3-4fa9-be9b-011c91b7534f" />
+
+## Plano de Contas (adicionar/criar contas padroes)
+<img width="1919" height="909" alt="image" src="https://github.com/user-attachments/assets/0f9746cb-722d-48fd-b405-683c58e88d99" />
+
+
+
 * **Gestão de Alunos:**
 
   * Cadastro com validação.
