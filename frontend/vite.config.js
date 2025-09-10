@@ -1,28 +1,41 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import path from 'path'
 
 export default defineConfig({
-  base: '/',               // se hospedar em subpasta, ajuste aqui (ex.: '/app/')
+  base: '/', // se hospedar em subpasta, ajuste ex.: '/app/'
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'), // ✅ habilita "@/..."
+    },
+  },
   server: {
     port: 3000,
     open: true,
+
+    // ✅ COOP/COEP para habilitar SharedArrayBuffer no DEV
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    },
+
     proxy: {
       // Opcional: facilita chamadas ao backend sem CORS
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
         // reescreve /api/xxxxx -> /xxxxx
-        rewrite: p => p.replace(/^\/api/, '')
+        rewrite: (p) => p.replace(/^\/api/, ''),
       }
     }
   },
+
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      // Em dev, o SW fica desligado por padrão (bom para evitar cache louco)
-      devOptions: { enabled: false },
+      devOptions: { enabled: false }, // SW desligado no dev
       includeAssets: ['favicon.ico', 'logo192.png', 'logo512.png'],
       manifest: {
         name: 'Sistema Academia SA',
@@ -38,7 +51,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // Não cacheia chamadas ao backend
+        // Não cachear chamadas ao backend
         navigateFallbackDenylist: [/^\/api\//, /^http/],
       },
     })

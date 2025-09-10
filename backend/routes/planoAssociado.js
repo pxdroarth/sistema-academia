@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { runQuery, runExecute } = require('../dbHelper');
+const { runQuery, runGet, runExecute } = require('../dbHelper');
 
 // 🔹 Listar todos os vínculos com nomes
 router.get('/', async (req, res) => {
@@ -33,20 +33,31 @@ router.get('/:responsavelId', async (req, res) => {
   }
 });
 
-// 🔹 Criar vínculo
+// 🔹 Criar/atualizar vínculo (upsert por aluno_id)
 router.post('/', async (req, res) => {
-  const { aluno_id, responsavel_id } = req.body;
-  if (!aluno_id || !responsavel_id) {
+  const { aluno_id, responsavel_id } = req.body || {};
+  const aId = parseInt(aluno_id);
+  const rId = parseInt(responsavel_id);
+
+  if (!aId || !rId) {
     return res.status(400).json({ error: 'Campos obrigatórios: aluno_id e responsavel_id' });
+  }
+  if (aId === rId) {
+    return res.status(400).json({ error: 'Aluno não pode ser responsável por si mesmo' });
   }
 
   try {
-    const result = await runExecute(`
-      INSERT INTO plano_associado (aluno_id, responsavel_id)
-      VALUES (?, ?)
-    `, [aluno_id, responsavel_id]);
+    // remove vínculo anterior do aluno
+    await runExecute(`DELETE FROM plano_associado WHERE aluno_id = ?`, [aId]);
 
-    res.status(201).json({ id: result.id });
+    const result = await runExecute(
+      `INSERT INTO plano_associado (aluno_id, responsavel_id) VALUES (?, ?)`,
+      [aId, rId]
+    );
+
+    // SQLite retorna lastID
+    const id = result.lastID || result.id || null;
+    res.status(201).json({ id, aluno_id: aId, responsavel_id: rId });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

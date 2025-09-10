@@ -1,7 +1,32 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { fetchAlunos } from "../../services/Api";
-import { Link } from "react-router-dom";
+
+// ✅ Regras de status da mensalidade (fallback se backend não enviar mensalidade_status)
+// 1) Preferencial: existe mensalidade PAGA e vigente (data_inicio <= hoje <= data_fim)
+// 2) Fallback p/ registros antigos sem período: se PAGA e vencimento >= hoje => em_dia
+function verificarStatusMensalidade(mensalidades) {
+  if (!Array.isArray(mensalidades) || mensalidades.length === 0) return "atrasado";
+  const hoje = new Date().toISOString().slice(0, 10);
+
+  const emDia = mensalidades.some((m) => {
+    if (m.status !== "pago") return false;
+
+    const temPeriodo = !!m.data_inicio && !!m.data_fim;
+    if (temPeriodo) {
+      return m.data_inicio <= hoje && m.data_fim >= hoje;
+    }
+    if (!m.data_inicio && !m.data_fim && m.vencimento) {
+      return m.vencimento >= hoje;
+    }
+    return false;
+  });
+
+  return emDia ? "em_dia" : "atrasado";
+}
+
+// ⚙️ Flag de ordenação (asc|desc). Padrão asc para seus testes.
+const ORDER = (import.meta.env?.VITE_ALUNOS_ORDER || "asc").toLowerCase();
 
 export default function AlunosPage() {
   const [alunos, setAlunos] = useState([]);
@@ -16,27 +41,44 @@ export default function AlunosPage() {
 
   async function carregarAlunos() {
     try {
-      const dados = await fetchAlunos();
-      setAlunos(dados);
+      const dados = await fetchAlunos(); // pode vir em DESC do backend
+      const normalizados = (dados || []).map((a) => {
+        const statusAtivo = a.status_ativo || a.status || "inativo";
+        const mensalidadeStatus =
+          a.mensalidade_status ||
+          verificarStatusMensalidade(a.mensalidades || a.mensalidade || []);
+        return { ...a, status_ativo: statusAtivo, mensalidade_status: mensalidadeStatus };
+      });
+
+      // 🔄 Força ordenação conforme flag (para testes agora em ASC)
+      normalizados.sort((a, b) => {
+        const va = Number(a.matricula || a.id || 0);
+        const vb = Number(b.matricula || b.id || 0);
+        return ORDER === "desc" ? vb - va : va - vb;
+      });
+
+      setAlunos(normalizados);
+      setPaginaAtual(1);
     } catch (error) {
       console.error("Erro ao buscar alunos:", error);
     }
   }
 
   const totalAlunos = alunos.length;
-  const totalEmDia = alunos.filter(a => a.mensalidade_status === "em_dia").length;
-  const totalAtrasados = alunos.filter(a => a.mensalidade_status !== "em_dia").length;
+  const totalEmDia = alunos.filter((a) => a.mensalidade_status === "em_dia").length;
+  const totalAtrasados = alunos.filter((a) => a.mensalidade_status !== "em_dia").length;
 
+  const termo = busca.toLowerCase();
   const alunosFiltrados = alunos.filter(
     (a) =>
-      a.nome.toLowerCase().includes(busca.toLowerCase()) ||
-      (a.matricula + "").includes(busca)
+      (a.nome || "").toLowerCase().includes(termo) ||
+      String(a.matricula || "").includes(busca)
   );
 
   const indexUltimoItem = paginaAtual * itensPorPagina;
   const indexPrimeiroItem = indexUltimoItem - itensPorPagina;
   const alunosPaginados = alunosFiltrados.slice(indexPrimeiroItem, indexUltimoItem);
-  const totalPaginas = Math.ceil(alunosFiltrados.length / itensPorPagina);
+  const totalPaginas = Math.max(1, Math.ceil(alunosFiltrados.length / itensPorPagina));
 
   function mudarPagina(novaPagina) {
     setPaginaAtual(novaPagina);
@@ -50,7 +92,10 @@ export default function AlunosPage() {
           type="text"
           placeholder="Buscar por nome ou matrícula"
           value={busca}
-          onChange={(e) => setBusca(e.target.value)}
+          onChange={(e) => {
+            setBusca(e.target.value);
+            setPaginaAtual(1); // reset da paginação ao digitar
+          }}
           className="border px-3 py-2 rounded"
         />
       </div>
@@ -103,7 +148,7 @@ export default function AlunosPage() {
                 <td className="p-2 border font-mono text-sm">{aluno.matricula}</td>
                 <td className="p-2 border">{aluno.nome}</td>
                 <td className="p-2 border">
-                  {aluno.status_ativo === "ativo" ? (
+                  {String(aluno.status_ativo).toLowerCase() === "ativo" ? (
                     <span className="text-green-600">✅ Ativo</span>
                   ) : (
                     <span className="text-red-600">❌ Inativo</span>
